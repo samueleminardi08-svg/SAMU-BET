@@ -1,5 +1,5 @@
-const CACHE_NAME = 'samu-bet-pwa-v1';
-const STATIC_ASSETS = ['/', '/index.html', '/manifest.json', '/icon-192.svg', '/icon-512.svg'];
+const CACHE_NAME = 'samu-bet-pwa-v2';
+const STATIC_ASSETS = ['./', './index.html', './manifest.json', './icon-192.svg', './icon-512.svg'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(

@@ -56,13 +56,21 @@ export interface AnalyzeApiResponse {
   quotaStatus: BackendStatusResponse['quota'];
 }
 
+import {
+  getStaticBackendStatus,
+  runStaticPagesAnalysis
+} from '../engine/staticPagesEngine';
+
 export async function fetchBackendStatus(): Promise<BackendStatusResponse | null> {
   try {
-    const res = await fetch('/api/status');
-    if (!res.ok) return null;
+    const res = await fetch('./api/status');
+    const contentType = res.headers.get('content-type') || '';
+    if (!res.ok || !contentType.includes('application/json')) {
+      return getStaticBackendStatus();
+    }
     return (await res.json()) as BackendStatusResponse;
   } catch {
-    return null;
+    return getStaticBackendStatus();
   }
 }
 
@@ -75,15 +83,26 @@ export async function runBackendAnalysis(params: {
   timeWindow: TimeWindowKey;
   allowedMarketGroups?: MarketGroupKey[];
 }): Promise<AnalyzeApiResponse> {
-  const res = await fetch('/api/analyze', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(params)
-  });
+  try {
+    const res = await fetch('./api/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(params)
+    });
 
-  const data = await res.json();
-  if (!res.ok) {
-    throw new Error(data.error || `Errore server (${res.status})`);
+    const contentType = res.headers.get('content-type') || '';
+    if (res.status === 404 || res.status === 405 || !contentType.includes('application/json')) {
+      return runStaticPagesAnalysis(params);
+    }
+
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.error || `Errore server (${res.status})`);
+    }
+    return data as AnalyzeApiResponse;
+  } catch (err) {
+    // Se siamo su GitHub Pages o senza server Node attivo, usa il motore autonomo integrato
+    return runStaticPagesAnalysis(params);
   }
-  return data as AnalyzeApiResponse;
 }
+

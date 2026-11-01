@@ -1,0 +1,26 @@
+{
+  "name": "SAMU BET",
+  "short_name": "SAMU BET",
+  "description": "Analisi quantitativa pronostici e composizione miglior schedina per Calcio, Formula 1 e Tennis",
+  "lang": "it-IT",
+  "start_url": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#070a12",
+  "theme_color": "#070a12",
+  "icons": [
+    {
+      "src": "./icon-192.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "./icon-512.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
+
