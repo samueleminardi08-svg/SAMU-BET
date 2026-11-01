@@ -1,7 +1,8 @@
 import { z } from 'zod';
 import { EventAIContextPayload } from '../config/riskConfig';
 
-const STORAGE_GEMINI_MODEL_KEY = 'samubet_gemini_model';
+export const STORAGE_GEMINI_API_KEY = 'samubet_gemini_api_key';
+export const STORAGE_GEMINI_MODEL_KEY = 'samubet_gemini_model';
 const STORAGE_AI_CACHE_KEY = 'samubet_ai_cache_v1';
 const AI_CACHE_TTL_MS = 2 * 60 * 60 * 1000; // 2 ore
 
@@ -26,6 +27,7 @@ export interface BridgeSettings {
   url: string;
   token: string;
   model?: string;
+  apiKey?: string;
 }
 
 export function normalizeBridgeUrl(rawUrl: string): string {
@@ -34,14 +36,16 @@ export function normalizeBridgeUrl(rawUrl: string): string {
 
 export function loadBridgeSettings(): BridgeSettings {
   try {
-    const model = localStorage.getItem(STORAGE_GEMINI_MODEL_KEY) || 'gemini-3.1-flash-lite';
+    const model = localStorage.getItem(STORAGE_GEMINI_MODEL_KEY) || 'gemini-2.5-flash';
+    const apiKey = localStorage.getItem(STORAGE_GEMINI_API_KEY) || '';
     return {
       url: '/api/ai',
       token: 'gemini-backend',
-      model
+      model,
+      apiKey
     };
   } catch {
-    return { url: '/api/ai', token: 'gemini-backend', model: 'gemini-3.1-flash-lite' };
+    return { url: '/api/ai', token: 'gemini-backend', model: 'gemini-2.5-flash', apiKey: '' };
   }
 }
 
@@ -49,6 +53,9 @@ export function saveBridgeSettings(settings: BridgeSettings): void {
   try {
     if (settings.model) {
       localStorage.setItem(STORAGE_GEMINI_MODEL_KEY, settings.model);
+    }
+    if (settings.apiKey !== undefined) {
+      localStorage.setItem(STORAGE_GEMINI_API_KEY, settings.apiKey.trim());
     }
   } catch {
     // ignore storage errors
@@ -100,79 +107,156 @@ export interface BridgeHealthStatus {
   detail?: string;
 }
 
-export async function testBridgeConnection(
-  _customSettings?: BridgeSettings
+/**
+ * Verifica la validità di una chiave Google Gemini effettuando una richiesta diretta alle API Google AI Studio.
+ */
+export async function testDirectGeminiKey(
+  apiKey: string,
+  model: string = 'gemini-2.5-flash'
 ): Promise<BridgeHealthStatus> {
+  const cleanKey = apiKey.trim();
+  if (!cleanKey || cleanKey.length < 15) {
+    return {
+      reachable: false,
+      unslothReachable: false,
+      detail: 'Chiave API assente o non valida (deve iniziare con AIzaSy...).'
+    };
+  }
+
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 7000);
 
   try {
-    const res = await fetch('/api/ai/health', {
-      method: 'GET',
-      signal: controller.signal
-    });
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(cleanKey)}`,
+      { signal: controller.signal }
+    );
 
     if (!res.ok) {
+      const errJson = await res.json().catch(() => null);
+      const errMsg =
+        errJson?.error?.message ||
+        (res.status === 400 || res.status === 403
+          ? 'Chiave non valida o non abilitata su Google AI Studio'
+          : `HTTP ${res.status}`);
       return {
         reachable: false,
         unslothReachable: false,
-        detail: `Errore verifica Gemini API (HTTP ${res.status}).`
+        detail: `Errore verifica Google Gemini: ${errMsg}.`
       };
     }
 
-    const data = await res.json();
     return {
-      reachable: Boolean(data.bridgeOnline),
-      unslothReachable: Boolean(data.unslothReachable),
-      configuredModel: data.configuredModel,
-      loadedModels: data.loadedModels,
-      detail: data.detail
+      reachable: true,
+      unslothReachable: true,
+      configuredModel: model,
+      loadedModels: [model],
+      detail: `Google Gemini API collegata e operativa (${model}).`
     };
-  } catch {
+  } catch (err: any) {
     return {
       reachable: false,
       unslothReachable: false,
-      detail: 'Backend AI non raggiungibile.'
+      detail: `Impossibile raggiungere i server Google Gemini (${err?.message || 'errore di rete'}).`
     };
   } finally {
     clearTimeout(timer);
   }
+}
+
+export async function testBridgeConnection(
+  customSettings?: BridgeSettings
+): Promise<BridgeHealthStatus> {
+  const settings = customSettings || loadBridgeSettings();
+  const storedKey =
+    settings.apiKey ||
+    (typeof localStorage !== 'undefined' ? localStorage.getItem(STORAGE_GEMINI_API_KEY) : '') ||
+    '';
+
+  // 1. Prova prima l'endpoint del backend locale se attivo
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 2000);
+    const res = await fetch('./api/ai/health', {
+      method: 'GET',
+      signal: controller.signal
+    });
+    clearTimeout(timer);
+
+    const contentType = res.headers.get('content-type') || '';
+    if (res.ok && contentType.includes('application/json')) {
+      const data = await res.json();
+      return {
+        reachable: Boolean(data.bridgeOnline),
+        unslothReachable: Boolean(data.unslothReachable),
+        configuredModel: data.configuredModel,
+        loadedModels: data.loadedModels,
+        detail: data.detail
+      };
+    }
+  } catch {
+    // Backend assente (es. GitHub Pages) -> usa verifica client-side diretta
+  }
+
+  // 2. Se siamo su GitHub Pages o senza backend locale, verifica la chiave salvata su Google AI
+  if (storedKey && storedKey.trim().length >= 15) {
+    return testDirectGeminiKey(storedKey.trim(), settings.model || 'gemini-2.5-flash');
+  }
+
+  return {
+    reachable: false,
+    unslothReachable: false,
+    detail: 'Gemini AI non attivo: inserisci la tua Google Gemini API Key per abilitare l\'analisi AI.'
+  };
 }
 
 export async function saveAndTestGeminiKey(
   apiKey: string,
   model: string
 ): Promise<BridgeHealthStatus> {
-  saveBridgeSettings({ url: '/api/ai', token: 'gemini-backend', model });
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 8000);
+  const cleanKey = apiKey.trim();
+  const cleanModel = model.trim() || 'gemini-2.5-flash';
 
+  if (typeof localStorage !== 'undefined') {
+    localStorage.setItem(STORAGE_GEMINI_MODEL_KEY, cleanModel);
+    if (cleanKey) {
+      localStorage.setItem(STORAGE_GEMINI_API_KEY, cleanKey);
+    }
+  }
+
+  saveBridgeSettings({ url: '/api/ai', token: 'gemini-backend', model: cleanModel, apiKey: cleanKey });
+
+  // 1. Prova a salvare e testare sul backend se attivo (sviluppo locale)
   try {
-    const res = await fetch('/api/ai/config', {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 2500);
+    const res = await fetch('./api/ai/config', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ apiKey: apiKey.trim(), model }),
+      body: JSON.stringify({ apiKey: cleanKey, model: cleanModel }),
       signal: controller.signal
     });
-
-    const data = await res.json();
-    return {
-      reachable: Boolean(data.bridgeOnline),
-      unslothReachable: Boolean(data.unslothReachable),
-      configuredModel: data.configuredModel,
-      loadedModels: data.loadedModels,
-      detail: data.detail
-    };
-  } catch {
-    return {
-      reachable: false,
-      unslothReachable: false,
-      detail: 'Impossibile salvare la configurazione Gemini sul backend.'
-    };
-  } finally {
     clearTimeout(timer);
+
+    const contentType = res.headers.get('content-type') || '';
+    if (res.ok && contentType.includes('application/json')) {
+      const data = await res.json();
+      return {
+        reachable: Boolean(data.bridgeOnline),
+        unslothReachable: Boolean(data.unslothReachable),
+        configuredModel: data.configuredModel,
+        loadedModels: data.loadedModels,
+        detail: data.detail
+      };
+    }
+  } catch {
+    // Backend non risponde (GitHub Pages) -> prosegui con il test diretto
   }
+
+  // 2. Se siamo su GitHub Pages o il backend non è presente, testa direttamente con Google Gemini API
+  return testDirectGeminiKey(cleanKey, cleanModel);
 }
+
 
 export async function estimateSingleEventOnBridge(
   eventContext: EventAIContextPayload,

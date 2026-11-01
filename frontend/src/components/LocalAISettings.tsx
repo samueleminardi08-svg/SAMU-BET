@@ -25,8 +25,16 @@ export const LocalAISettings: React.FC<LocalAISettingsProps> = ({
   currentHealth,
   onSettingsUpdated
 }) => {
-  const [apiKey, setApiKey] = useState('');
-  const [model, setModel] = useState(initialSettings.model || 'gemini-3.1-flash-lite');
+  const [apiKey, setApiKey] = useState(
+    initialSettings.apiKey ||
+      (typeof localStorage !== 'undefined' ? localStorage.getItem('samubet_gemini_api_key') : '') ||
+      ''
+  );
+  const [model, setModel] = useState(
+    initialSettings.model ||
+      (typeof localStorage !== 'undefined' ? localStorage.getItem('samubet_gemini_model') : '') ||
+      'gemini-2.5-flash'
+  );
   const [testing, setTesting] = useState(false);
   const [savedNotice, setSavedNotice] = useState(false);
 
@@ -36,9 +44,9 @@ export const LocalAISettings: React.FC<LocalAISettingsProps> = ({
     const status = await saveAndTestGeminiKey(apiKey, model);
     setTesting(false);
     setSavedNotice(true);
-    setTimeout(() => setSavedNotice(false), 3000);
+    setTimeout(() => setSavedNotice(false), 4000);
     onSettingsUpdated(
-      { url: '/api/ai', token: 'gemini-backend', model },
+      { url: '/api/ai', token: 'gemini-backend', model, apiKey },
       status
     );
   };
@@ -52,8 +60,8 @@ export const LocalAISettings: React.FC<LocalAISettingsProps> = ({
           <h2 className="section-title">Impostazioni AI (Google Gemini API)</h2>
           <p className="section-subtitle">
             Collega SAMU BET alle API ufficiali di <strong>Google Gemini</strong> per analizzare
-            statistiche, forma, infortuni e notizie RSS di ogni partita. La chiave viene salvata
-            in modo protetto esclusivamente nel backend locale (file <code>.env</code>).
+            statistiche, formazioni, marcatori e notizie sportive di ogni partita. La chiave viene salvata
+            in modo protetto nel tuo browser (e nel backend se presente).
           </p>
         </div>
       </div>
@@ -91,6 +99,8 @@ export const LocalAISettings: React.FC<LocalAISettingsProps> = ({
             value={apiKey}
             onChange={(e) => setApiKey(e.target.value)}
             className="settings-text-input"
+            autoComplete="off"
+            required
           />
         </div>
 
@@ -105,11 +115,10 @@ export const LocalAISettings: React.FC<LocalAISettingsProps> = ({
             onChange={(e) => setModel(e.target.value)}
             className="settings-text-input"
           >
-            <option value="gemini-3.1-flash-lite">gemini-3.1-flash-lite (Consigliato — Ultra rapido e stabile)</option>
-            <option value="gemini-3.5-flash-lite">gemini-3.5-flash-lite (Veloce e quota elevata)</option>
-            <option value="gemini-flash-lite-latest">gemini-flash-lite-latest (Sempre aggiornato Lite)</option>
-            <option value="gemini-3-flash-preview">gemini-3-flash-preview (Gemini 3 Flash)</option>
-            <option value="gemini-3.5-flash">gemini-3.5-flash (Gemini 3.5 Flash)</option>
+            <option value="gemini-2.5-flash">gemini-2.5-flash (Consigliato — Rapido, affidabile e quota gratuita)</option>
+            <option value="gemini-2.5-pro">gemini-2.5-pro (Massima precisione e ragionamento avanzato)</option>
+            <option value="gemini-2.0-flash">gemini-2.0-flash (Ultra veloce)</option>
+            <option value="gemini-1.5-flash">gemini-1.5-flash (Standard stabile)</option>
           </select>
         </div>
 
@@ -131,7 +140,9 @@ export const LocalAISettings: React.FC<LocalAISettingsProps> = ({
 
         {savedNotice && (
           <p className="saved-feedback-msg">
-            Configurazione Gemini aggiornata sul backend locale.
+            {isFullyConnected
+              ? '✓ Configurazione Google Gemini salvata e verificata con successo!'
+              : 'Verifica completata.'}
           </p>
         )}
       </form>

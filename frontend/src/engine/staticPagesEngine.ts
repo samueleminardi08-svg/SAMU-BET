@@ -1032,6 +1032,12 @@ function checkClientFeasibility(
 
 export function getStaticBackendStatus(): BackendStatusResponse {
   const nowIso = new Date().toISOString();
+  const savedKey =
+    typeof localStorage !== 'undefined'
+      ? localStorage.getItem('samubet_gemini_api_key') || ''
+      : '';
+  const isConfigured = savedKey.trim().length >= 15;
+
   return {
     status: 'ok',
     envReport: {
@@ -1041,10 +1047,12 @@ export function getStaticBackendStatus(): BackendStatusResponse {
       demoModeBlockedInProd: true,
       keys: [
         {
-          keyName: 'GEMINI_AI_ENGINE',
-          configured: true,
+          keyName: 'GEMINI_API_KEY',
+          configured: isConfigured,
           requiredFor: 'Analisi Formazioni, Statistiche e Pronostici SNAI',
-          impactIfMissing: 'Attivo in modalità autonoma Web'
+          impactIfMissing: isConfigured
+            ? 'Attivo con chiave utente salvata nel browser'
+            : 'Non inserita (usa probabilità matematiche e formazioni calibrate)'
         }
       ],
       warnings: []
