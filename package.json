@@ -1,0 +1,15 @@
+{
+  "name": "samu-bet-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "SAMU BET — Analisi quantitativa pronostici e composizione schedina per Calcio, Formula 1 e Tennis",
+  "scripts": {
+    "install:all": "npm --prefix backend install && npm --prefix frontend install && npm --prefix local-ai-bridge install",
+    "dev:backend": "npm --prefix backend run dev",
+    "dev:frontend": "npm --prefix frontend run dev",
+    "dev:bridge": "npm --prefix local-ai-bridge run dev",
+    "build": "npm --prefix backend run build && npm --prefix frontend run build",
+    "test": "npm --prefix backend run test"
+  }
+}
+
