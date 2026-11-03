@@ -139,7 +139,8 @@ export async function fetchLiveEspnMatches(timeWindow: TimeWindowKey = 'hours48'
     return liveMatchesCache.matches;
   }
 
-  const daysCount = timeWindow === 'today' ? 2 : timeWindow === 'hours48' ? 3 : timeWindow === 'days7' ? 7 : 14;
+  // Assicura sempre la copertura dell'intero turno settimanale (minimo 7 giorni per includere coppe + weekend)
+  const daysCount = timeWindow === 'days14' ? 14 : 7;
   const dateStrings: string[] = [];
 
   for (let i = 0; i < daysCount; i++) {
@@ -247,6 +248,14 @@ export async function fetchLiveEspnMatches(timeWindow: TimeWindowKey = 'hours48'
       }
     }
 
+    // Unisci con STATIC_MATCHES per garantire la presenza sia dei campionati sia delle coppe
+    for (const sm of STATIC_MATCHES) {
+      const key = `${sm.competitionId}-${sm.homeTeam}-${sm.awayTeam}`;
+      if (!uniqueMap.has(key)) {
+        uniqueMap.set(key, sm);
+      }
+    }
+
     const fetchedMatches = Array.from(uniqueMap.values());
 
     if (fetchedMatches.length >= 4) {
@@ -275,22 +284,8 @@ export async function getLiveOrStaticCompetitions(timeWindow: TimeWindowKey = 'h
   timeWindow: TimeWindowKey;
 }> {
   const matches = await fetchLiveEspnMatches(timeWindow);
-  const now = Date.now();
-  const maxHours =
-    timeWindow === 'today'
-      ? 26
-      : timeWindow === 'hours48'
-      ? 48
-      : timeWindow === 'days7'
-      ? 168
-      : 336;
-
-  const inWindow = matches.filter((m) => {
-    const h = getMatchHoursFromNow(m, now);
-    return h <= maxHours;
-  });
-
-  const effective = inWindow.length >= 4 ? inWindow : matches;
+  // Nel catalogo mostriamo sempre tutte le competizioni disponibili nel turno (campionati e coppe)
+  const effective = matches.length >= 4 ? matches : STATIC_MATCHES;
 
   const compMap = new Map<
     string,

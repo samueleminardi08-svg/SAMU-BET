@@ -2091,21 +2091,8 @@ export function getStaticCompetitions(timeWindow: TimeWindowKey = 'hours48'): {
   timeWindow: TimeWindowKey;
 } {
   const now = Date.now();
-  const maxHours =
-    timeWindow === 'today'
-      ? 26
-      : timeWindow === 'hours48'
-      ? 48
-      : timeWindow === 'days7'
-      ? 168
-      : 336;
-
-  const matchesInWindow = STATIC_MATCHES.filter((m) => {
-    const h = getMatchHoursFromNow(m, now);
-    return h <= maxHours;
-  });
-  const effective = matchesInWindow.length >= 4 ? matchesInWindow : STATIC_MATCHES;
-
+  // Nel catalogo mostriamo sempre tutte le competizioni del turno settimanale (campionati e coppe)
+  // con il conteggio delle partite in programma!
   const compMap = new Map<
     string,
     {
@@ -2117,7 +2104,7 @@ export function getStaticCompetitions(timeWindow: TimeWindowKey = 'hours48'): {
     }
   >();
 
-  for (const m of effective) {
+  for (const m of STATIC_MATCHES) {
     const existing = compMap.get(m.competitionId);
     if (existing) {
       existing.count++;
@@ -2154,7 +2141,7 @@ export function getStaticCompetitions(timeWindow: TimeWindowKey = 'hours48'): {
 
   return {
     competitions,
-    calendarUpdatedTimestamp: formatRomeDate(new Date()),
+    calendarUpdatedTimestamp: formatRomeDate(new Date(now)),
     timeWindow
   };
 }
@@ -2189,20 +2176,35 @@ export function runStaticPagesAnalysis(
   const feasibility = checkClientFeasibility(params.targetOdds, params.riskLevel, params.betType);
   const sourceMatches = customMatches && customMatches.length >= 4 ? customMatches : STATIC_MATCHES;
 
-  const matchesInWindow = sourceMatches.filter((m) => {
-    const h = getMatchHoursFromNow(m, now);
-    return h <= maxHours;
-  });
-  let effectiveMatches = matchesInWindow.length >= 4 ? matchesInWindow : sourceMatches;
+  let effectiveMatches: StaticMatchBlueprint[] = [];
 
   if (params.competitions && params.competitions.length > 0) {
     if (params.competitions.includes('__none__')) {
       effectiveMatches = [];
     } else {
       const selectedSet = new Set(params.competitions);
-      effectiveMatches = effectiveMatches.filter(
+      const filteredByComp = sourceMatches.filter(
         (m) => selectedSet.has(m.competitionId) || selectedSet.has(m.competitionName)
       );
+      // Se l'utente ha selezionato competizioni specifiche (es. Serie A), cerchiamo nella finestra
+      // ma se nella finestra non ci sono match (es. turno nel weekend), includiamo comunque le partite del turno!
+      const inWindow = filteredByComp.filter((m) => getMatchHoursFromNow(m, now) <= maxHours);
+      effectiveMatches = inWindow.length > 0 ? inWindow : filteredByComp;
+    }
+  } else {
+    // Nessun filtro specifico (tutti attivi)
+    const matchesInWindow = sourceMatches.filter((m) => {
+      const h = getMatchHoursFromNow(m, now);
+      return h <= maxHours;
+    });
+    // Se nella finestra breve ci sono solo coppe o mancano campionati,
+    // garantiamo una selezione equilibrata includendo anche le partite di campionato del turno!
+    const hasLeagues = matchesInWindow.some((m) => m.type === 'league');
+    if (!hasLeagues && params.timeWindow !== 'today') {
+      const upcomingLeagues = sourceMatches.filter((m) => m.type === 'league');
+      effectiveMatches = [...matchesInWindow, ...upcomingLeagues];
+    } else {
+      effectiveMatches = matchesInWindow.length >= 4 ? matchesInWindow : sourceMatches;
     }
   }
 

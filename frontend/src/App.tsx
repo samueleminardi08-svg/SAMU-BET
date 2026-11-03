@@ -51,13 +51,13 @@ export const App: React.FC = () => {
   const [sports, setSports] = useState<SportKey[]>(['football']);
   const [targetOdds, setTargetOdds] = useState<number>(5.0);
   const [riskLevel, setRiskLevel] = useState<number>(5);
-  const [timeWindow, setTimeWindow] = useState<TimeWindowKey>('hours48');
+  const [timeWindow, setTimeWindow] = useState<TimeWindowKey>('days7');
   const [allowedMarketGroups, setAllowedMarketGroups] = useState<MarketGroupKey[]>([]);
   const [diversityMode, setDiversityMode] = useState<DiversityModeKey>('auto');
 
   // Competizioni e Coppe (pre-popolate con motore statico per reattività immediata anche offline / GitHub Pages)
   const [availableCompetitions, setAvailableCompetitions] = useState<CompetitionItem[]>(() => {
-    return getStaticCompetitions('hours48').competitions;
+    return getStaticCompetitions('days7').competitions;
   });
   const [selectedCompetitionIds, setSelectedCompetitionIds] = useState<string[]>(() => {
     try {
@@ -70,7 +70,7 @@ export const App: React.FC = () => {
     }
   });
   const [calendarUpdatedTimestamp, setCalendarUpdatedTimestamp] = useState<string>(() => {
-    return getStaticCompetitions('hours48').calendarUpdatedTimestamp;
+    return getStaticCompetitions('days7').calendarUpdatedTimestamp;
   });
 
   // Stato Backend & Risultati
