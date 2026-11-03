@@ -24,7 +24,7 @@ interface StaticTeamRoster {
   coachNote: string;
 }
 
-interface StaticMatchBlueprint {
+export interface StaticMatchBlueprint {
   id: string;
   competitionId: string;
   competitionName: string;
@@ -32,7 +32,8 @@ interface StaticMatchBlueprint {
   type: CompetitionType;
   homeTeam: string;
   awayTeam: string;
-  hoursFromNow: number;
+  kickoffTimeUTC: string;
+  hoursFromNow?: number;
   odds1: number;
   oddsX: number;
   odds2: number;
@@ -43,843 +44,1346 @@ interface StaticMatchBlueprint {
   tacticalContext: string;
 }
 
-const STATIC_MATCHES: StaticMatchBlueprint[] = [
-  // --- 1. CAMPIONATI (SERIE A, PREMIER, LA LIGA, BUNDESLIGA, LIGUE 1, SERIE B) ---
-  {
-    id: 'sa-int-nap',
-    competitionId: 'soccer_italy_serie_a',
-    competitionName: 'Serie A',
-    country: 'Italia',
-    type: 'league',
-    homeTeam: 'Inter',
-    awayTeam: 'Napoli',
-    hoursFromNow: 4,
-    odds1: 1.85,
-    oddsX: 3.55,
-    odds2: 4.25,
-    oddsOver25: 1.78,
-    oddsGoal: 1.72,
-    homeRoster: {
-      striker: 'Lautaro Martínez',
-      winger: 'Marcus Thuram',
-      midfielder: 'Hakan Çalhanoğlu',
-      defender: 'Alessandro Bastoni',
-      formation: '3-5-2',
-      coachNote: 'Lautaro Martínez e Thuram confermati dal 1° minuto; Çalhanoğlu rigorista designato.'
-    },
-    awayRoster: {
-      striker: 'Romelu Lukaku',
-      winger: 'Khvicha Kvaratskhelia',
-      midfielder: 'Scott McTominay',
-      defender: 'Giovanni Di Lorenzo',
-      formation: '4-3-3',
-      coachNote: 'Tridente con Kvaratskhelia e Politano a supporto di Lukaku; inserimenti di McTominay.'
-    },
-    tacticalContext: 'Big match ad alta intensità: Inter forte sulle corsie esterne, Napoli pericoloso nelle transizioni rapide.'
-  },
-  {
-    id: 'sa-juv-mil',
-    competitionId: 'soccer_italy_serie_a',
-    competitionName: 'Serie A',
-    country: 'Italia',
-    type: 'league',
-    homeTeam: 'Juventus',
-    awayTeam: 'Milan',
-    hoursFromNow: 7,
-    odds1: 2.12,
-    oddsX: 3.25,
-    odds2: 3.60,
-    oddsOver25: 2.02,
-    oddsGoal: 1.85,
-    homeRoster: {
-      striker: 'Dušan Vlahović',
-      winger: 'Kenan Yıldız',
-      midfielder: 'Teun Koopmeiners',
-      defender: 'Federico Gatti',
-      formation: '4-2-3-1',
-      coachNote: 'Vlahović terminale offensivo e tiratore dei calci piazzati, Yıldız e Conceição sugli esterni.'
-    },
-    awayRoster: {
-      striker: 'Christian Pulisic',
-      winger: 'Rafael Leão',
-      midfielder: 'Tijjani Reijnders',
-      defender: 'Theo Hernández',
-      formation: '4-2-3-1',
-      coachNote: 'Pulisic e Leão titolari nella rifinitura, Reijnders a supporto tra le linee.'
-    },
-    tacticalContext: 'Sfida tattica equilibrata nel primo tempo con possibili spazi aperti nella ripresa.'
-  },
-  {
-    id: 'sa-ata-rom',
-    competitionId: 'soccer_italy_serie_a',
-    competitionName: 'Serie A',
-    country: 'Italia',
-    type: 'league',
-    homeTeam: 'Atalanta',
-    awayTeam: 'Roma',
-    hoursFromNow: 10,
-    odds1: 1.78,
-    oddsX: 3.65,
-    odds2: 4.50,
-    oddsOver25: 1.68,
-    oddsGoal: 1.66,
-    homeRoster: {
-      striker: 'Mateo Retegui',
-      winger: 'Ademola Lookman',
-      midfielder: 'Charles De Ketelaere',
-      defender: 'Isak Hien',
-      formation: '3-4-2-1',
-      coachNote: 'Retegui capocannoniere al centro dell\'attacco con Lookman e De Ketelaere alle spalle.'
-    },
-    awayRoster: {
-      striker: 'Artem Dovbyk',
-      winger: 'Paulo Dybala',
-      midfielder: 'Lorenzo Pellegrini',
-      defender: 'Gianluca Mancini',
-      formation: '3-4-2-1',
-      coachNote: 'Dovbyk riferimento centrale, Dybala libero di svariare sulla trequarti.'
-    },
-    tacticalContext: 'Ritmi elevati e duelli uomo contro uomo a tutto campo tipici del gioco bergamasco.'
-  },
-  {
-    id: 'sa-fio-laz',
-    competitionId: 'soccer_italy_serie_a',
-    competitionName: 'Serie A',
-    country: 'Italia',
-    type: 'league',
-    homeTeam: 'Fiorentina',
-    awayTeam: 'Lazio',
-    hoursFromNow: 15,
-    odds1: 2.35,
-    oddsX: 3.30,
-    odds2: 3.05,
-    oddsOver25: 1.82,
-    oddsGoal: 1.68,
-    homeRoster: {
-      striker: 'Moise Kean',
-      winger: 'Albert Guðmundsson',
-      midfielder: 'Andrea Colpani',
-      defender: 'Pietro Comuzzo',
-      formation: '4-2-3-1',
-      coachNote: 'Moise Kean titolare al centro dell\'attacco con Guðmundsson tra le linee.'
-    },
-    awayRoster: {
-      striker: 'Valentín Castellanos',
-      winger: 'Mattia Zaccagni',
-      midfielder: 'Matteo Guendouzi',
-      defender: 'Mario Gila',
-      formation: '4-2-3-1',
-      coachNote: 'Castellanos punta centrale con Zaccagni e Isaksen larghi sulle fasce.'
-    },
-    tacticalContext: 'Entrambe le formazioni privilegiano la verticalizzazione immediata e creano molte occasioni da rete.'
-  },
-  {
-    id: 'epl-ars-liv',
-    competitionId: 'soccer_epl',
-    competitionName: 'Premier League',
-    country: 'Inghilterra',
-    type: 'league',
-    homeTeam: 'Arsenal',
-    awayTeam: 'Liverpool',
-    hoursFromNow: 19,
-    odds1: 2.25,
-    oddsX: 3.40,
-    odds2: 3.10,
-    oddsOver25: 1.67,
-    oddsGoal: 1.58,
-    homeRoster: {
-      striker: 'Kai Havertz',
-      winger: 'Bukayo Saka',
-      midfielder: 'Martin Ødegaard',
-      defender: 'Gabriel Magalhães',
-      formation: '4-3-3',
-      coachNote: 'Bukayo Saka titolare a destra e incaricato di rigori e calci d\'angolo; Havertz falso nueve.'
-    },
-    awayRoster: {
-      striker: 'Mohamed Salah',
-      winger: 'Luis Díaz',
-      midfielder: 'Alexis Mac Allister',
-      defender: 'Virgil van Dijk',
-      formation: '4-3-3',
-      coachNote: 'Mohamed Salah punto fermo del tridente offensivo insieme a Luis Díaz.'
-    },
-    tacticalContext: 'Scontro al vertice ad altissimo indice di pericolosità offensiva e calci piazzati.'
-  },
-  {
-    id: 'epl-mci-che',
-    competitionId: 'soccer_epl',
-    competitionName: 'Premier League',
-    country: 'Inghilterra',
-    type: 'league',
-    homeTeam: 'Manchester City',
-    awayTeam: 'Chelsea',
-    hoursFromNow: 22,
-    odds1: 1.58,
-    oddsX: 4.30,
-    odds2: 5.20,
-    oddsOver25: 1.52,
-    oddsGoal: 1.62,
-    homeRoster: {
-      striker: 'Erling Haaland',
-      winger: 'Savinho',
-      midfielder: 'Phil Foden',
-      defender: 'Rúben Dias',
-      formation: '4-1-4-1',
-      coachNote: 'Erling Haaland titolare inamovibile e rigorista, assistito da Foden e Bernardo Silva.'
-    },
-    awayRoster: {
-      striker: 'Nicolas Jackson',
-      winger: 'Cole Palmer',
-      midfielder: 'Moises Caicedo',
-      defender: 'Levi Colwill',
-      formation: '4-2-3-1',
-      coachNote: 'Cole Palmer trequartista e rigorista del Chelsea dietro a Nicolas Jackson.'
-    },
-    tacticalContext: 'Possesso palla prolungato del City contro le ripartenze verticali orchestrate da Palmer.'
-  },
-  {
-    id: 'll-rma-bar',
-    competitionId: 'soccer_spain_la_liga',
-    competitionName: 'La Liga',
-    country: 'Spagna',
-    type: 'league',
-    homeTeam: 'Real Madrid',
-    awayTeam: 'Barcelona',
-    hoursFromNow: 27,
-    odds1: 1.95,
-    oddsX: 3.80,
-    odds2: 3.50,
-    oddsOver25: 1.48,
-    oddsGoal: 1.45,
-    homeRoster: {
-      striker: 'Kylian Mbappé',
-      winger: 'Vinícius Júnior',
-      midfielder: 'Jude Bellingham',
-      defender: 'Antonio Rüdiger',
-      formation: '4-3-1-2',
-      coachNote: 'Coppia d\'attacco Mbappé - Vinícius Júnior supportata dagli inserimenti di Bellingham.'
-    },
-    awayRoster: {
-      striker: 'Robert Lewandowski',
-      winger: 'Lamine Yamal',
-      midfielder: 'Pedri',
-      defender: 'Pau Cubarsí',
-      formation: '4-3-3',
-      coachNote: 'Lewandowski centravanti con Lamine Yamal e Raphinha sugli esterni e linea difensiva alta.'
-    },
-    tacticalContext: 'Clásico spagnolo con linee difensive alte e tantissima qualità individuale negli ultimi 20 metri.'
-  },
-  {
-    id: 'bl-bay-bvb',
-    competitionId: 'soccer_germany_bundesliga',
-    competitionName: 'Bundesliga',
-    country: 'Germania',
-    type: 'league',
-    homeTeam: 'Bayern Munich',
-    awayTeam: 'Borussia Dortmund',
-    hoursFromNow: 31,
-    odds1: 1.48,
-    oddsX: 4.65,
-    odds2: 5.80,
-    oddsOver25: 1.42,
-    oddsGoal: 1.55,
-    homeRoster: {
-      striker: 'Harry Kane',
-      winger: 'Michael Olise',
-      midfielder: 'Jamal Musiala',
-      defender: 'Dayot Upamecano',
-      formation: '4-2-3-1',
-      coachNote: 'Harry Kane titolare e rigorista, con Musiala e Olise nella batteria di trequartisti.'
-    },
-    awayRoster: {
-      striker: 'Serhou Guirassy',
-      winger: 'Jamie Gittens',
-      midfielder: 'Julian Brandt',
-      defender: 'Nico Schlotterbeck',
-      formation: '4-2-3-1',
-      coachNote: 'Guirassy riferimento offensivo centrale con Gittens e Brandt a supporto.'
-    },
-    tacticalContext: 'Klassiker tedesco storicamente ricco di reti e conclusioni nello specchio.'
-  },
-  {
-    id: 'sa-bol-tor',
-    competitionId: 'soccer_italy_serie_a',
-    competitionName: 'Serie A',
-    country: 'Italia',
-    type: 'league',
-    homeTeam: 'Bologna',
-    awayTeam: 'Torino',
-    hoursFromNow: 36,
-    odds1: 1.92,
-    oddsX: 3.30,
-    odds2: 4.30,
-    oddsOver25: 2.15,
-    oddsGoal: 1.98,
-    homeRoster: {
-      striker: 'Santiago Castro',
-      winger: 'Riccardo Orsolini',
-      midfielder: 'Remo Freuler',
-      defender: 'Sam Beukema',
-      formation: '4-2-3-1',
-      coachNote: 'Orsolini esterno destro e rigorista, Santiago Castro confermato al centro dell\'attacco.'
-    },
-    awayRoster: {
-      striker: 'Ché Adams',
-      winger: 'Nikola Vlašić',
-      midfielder: 'Samuele Ricci',
-      defender: 'Saúl Coco',
-      formation: '3-5-2',
-      coachNote: 'Ché Adams guida l\'attacco granata con il supporto tra le linee di Vlašić.'
-    },
-    tacticalContext: 'Gara più tattica e bloccata a centrocampo, con il fattore campo a favore del Bologna.'
-  },
-  {
-    id: 'fl1-psg-mon',
-    competitionId: 'soccer_france_ligue_one',
-    competitionName: 'Ligue 1',
-    country: 'Francia',
-    type: 'league',
-    homeTeam: 'PSG',
-    awayTeam: 'Monaco',
-    hoursFromNow: 42,
-    odds1: 1.55,
-    oddsX: 4.40,
-    odds2: 5.40,
-    oddsOver25: 1.50,
-    oddsGoal: 1.60,
-    homeRoster: {
-      striker: 'Ousmane Dembélé',
-      winger: 'Bradley Barcola',
-      midfielder: 'Vitinha',
-      defender: 'Achraf Hakimi',
-      formation: '4-3-3',
-      coachNote: 'Tridente rapido con Dembélé e Barcola; Hakimi spinge costantemente sulla fascia destra.'
-    },
-    awayRoster: {
-      striker: 'Breel Embolo',
-      winger: 'Maghnes Akliouche',
-      midfielder: 'Denis Zakaria',
-      defender: 'Thilo Kehrer',
-      formation: '4-2-3-1',
-      coachNote: 'Embolo punta fisica con Akliouche e Ben Seghir sulla trequarti.'
-    },
-    tacticalContext: 'Alto volume di gioco offensivo e numerosi calci d\'angolo sviluppati sulle catene laterali.'
-  },
-  {
-    id: 'sb-pal-sam',
-    competitionId: 'soccer_italy_serie_b',
-    competitionName: 'Serie B',
-    country: 'Italia',
-    type: 'league',
-    homeTeam: 'Palermo',
-    awayTeam: 'Sampdoria',
-    hoursFromNow: 46,
-    odds1: 2.15,
-    oddsX: 3.15,
-    odds2: 3.50,
-    oddsOver25: 2.05,
-    oddsGoal: 1.88,
-    homeRoster: {
-      striker: 'Matteo Brunori',
-      winger: 'Roberto Insigne',
-      midfielder: 'Jacopo Segre',
-      defender: 'Pietro Ceccaroni',
-      formation: '4-3-3',
-      coachNote: 'Brunori punto di riferimento offensivo e rigorista primario.'
-    },
-    awayRoster: {
-      striker: 'Massimo Coda',
-      winger: 'Gennaro Tutino',
-      midfielder: 'Gerard Yepes',
-      defender: 'Simone Romagnoli',
-      formation: '3-5-2',
-      coachNote: 'Coppia Coda - Tutino con grande pericolosità in area avversaria.'
-    },
-    tacticalContext: 'Partita di cartello in Serie B con duelli fisici e grande incidenza delle palle inattive.'
-  },
-  {
-    id: 'll-atm-vil',
-    competitionId: 'soccer_spain_la_liga',
-    competitionName: 'La Liga',
-    country: 'Spagna',
-    type: 'league',
-    homeTeam: 'Atlético Madrid',
-    awayTeam: 'Villarreal',
-    hoursFromNow: 54,
-    odds1: 1.68,
-    oddsX: 3.90,
-    odds2: 4.80,
-    oddsOver25: 1.75,
-    oddsGoal: 1.74,
-    homeRoster: {
-      striker: 'Julián Álvarez',
-      winger: 'Antoine Griezmann',
-      midfielder: 'Rodrigo De Paul',
-      defender: 'José María Giménez',
-      formation: '4-4-2',
-      coachNote: 'Tandem offensivo Julián Álvarez - Griezmann confermato da Simeone.'
-    },
-    awayRoster: {
-      striker: 'Ayoze Pérez',
-      winger: 'Álex Baena',
-      midfielder: 'Dani Parejo',
-      defender: 'Raúl Albiol',
-      formation: '4-4-2',
-      coachNote: 'Ayoze Pérez prima punta con gli assist e i calci piazzati di Álex Baena.'
-    },
-    tacticalContext: 'Solidità casalinga dei Colchoneros contro l\'ottima organizzazione offensiva del Villarreal.'
-  },
-  {
-    id: 'bl-lev-rbl',
-    competitionId: 'soccer_germany_bundesliga',
-    competitionName: 'Bundesliga',
-    country: 'Germania',
-    type: 'league',
-    homeTeam: 'Bayer Leverkusen',
-    awayTeam: 'RB Leipzig',
-    hoursFromNow: 68,
-    odds1: 1.75,
-    oddsX: 3.85,
-    odds2: 4.35,
-    oddsOver25: 1.64,
-    oddsGoal: 1.60,
-    homeRoster: {
-      striker: 'Victor Boniface',
-      winger: 'Florian Wirtz',
-      midfielder: 'Granit Xhaka',
-      defender: 'Jonathan Tah',
-      formation: '3-4-2-1',
-      coachNote: 'Florian Wirtz faro creativo alle spalle di Boniface, Grimaldo sui calci piazzati.'
-    },
-    awayRoster: {
-      striker: 'Loïs Openda',
-      winger: 'Xavi Simons',
-      midfielder: 'Amadou Haidara',
-      defender: 'Willi Orbán',
-      formation: '4-2-2-2',
-      coachNote: 'Openda e Šeško in attacco innescati in verticale da Xavi Simons.'
-    },
-    tacticalContext: 'Sfida spettacolare tra due squadre ad altissima produzione di tiri in porta.'
-  },
+export function getMatchHoursFromNow(m: StaticMatchBlueprint, now = Date.now()): number {
+  if (m.kickoffTimeUTC) {
+    const matchTime = new Date(m.kickoffTimeUTC).getTime();
+    if (!isNaN(matchTime)) {
+      const diffHours = (matchTime - now) / (3600 * 1000);
+      if (diffHours < 0 && diffHours > -8) return 0;
+      if (diffHours >= 0) return Math.round(diffHours);
+    }
+  }
+  return typeof m.hoursFromNow === 'number' ? m.hoursFromNow : 12;
+}
 
-  // --- 2. COPPE (CHAMPIONS LEAGUE, COPPA ITALIA, EUROPA LEAGUE, CONFERENCE LEAGUE, FA CUP, COPA DEL REY) ---
-  {
-    id: 'ucl-rma-mci',
-    competitionId: 'soccer_uefa_champs_league',
-    competitionName: 'UEFA Champions League',
-    country: 'Europa',
-    type: 'cup',
-    homeTeam: 'Real Madrid',
-    awayTeam: 'Manchester City',
-    hoursFromNow: 8,
-    odds1: 2.30,
-    oddsX: 3.50,
-    odds2: 2.95,
-    oddsOver25: 1.55,
-    oddsGoal: 1.48,
-    homeRoster: {
-      striker: 'Kylian Mbappé',
-      winger: 'Vinícius Júnior',
-      midfielder: 'Jude Bellingham',
-      defender: 'Antonio Rüdiger',
-      formation: '4-3-3',
-      coachNote: 'Mbappé e Vinícius pronti alle ripartenze; Bellingham incursore centrale.'
-    },
-    awayRoster: {
-      striker: 'Erling Haaland',
-      winger: 'Savinho',
-      midfielder: 'Kevin De Bruyne',
-      defender: 'Rúben Dias',
-      formation: '4-3-3',
-      coachNote: 'De Bruyne ispiratore per Haaland; City focalizzato sul possesso avanzato.'
-    },
-    tacticalContext: 'Scontro stellare ai vertici del calcio europeo con altissima intensità e occasioni da rete.'
-  },
-  {
-    id: 'ucl-int-ars',
-    competitionId: 'soccer_uefa_champs_league',
-    competitionName: 'UEFA Champions League',
-    country: 'Europa',
-    type: 'cup',
-    homeTeam: 'Inter',
-    awayTeam: 'Arsenal',
-    hoursFromNow: 14,
-    odds1: 2.45,
-    oddsX: 3.25,
-    odds2: 2.90,
-    oddsOver25: 1.85,
-    oddsGoal: 1.70,
-    homeRoster: {
-      striker: 'Lautaro Martínez',
-      winger: 'Marcus Thuram',
-      midfielder: 'Hakan Çalhanoğlu',
-      defender: 'Alessandro Bastoni',
-      formation: '3-5-2',
-      coachNote: 'Lautaro Martínez capitano e trascinatore; Çalhanoğlu metronomo del centrocampo.'
-    },
-    awayRoster: {
-      striker: 'Kai Havertz',
-      winger: 'Bukayo Saka',
-      midfielder: 'Martin Ødegaard',
-      defender: 'William Saliba',
-      formation: '4-3-3',
-      coachNote: 'Saka stella a destra; Arsenal molto pericoloso sui calci piazzati.'
-    },
-    tacticalContext: 'Organizzazione difensiva di altissimo livello contro il pressing asfissiante dei Gunners.'
-  },
-  {
-    id: 'ci-juv-laz',
-    competitionId: 'soccer_italy_coppa_italia',
-    competitionName: 'Coppa Italia',
-    country: 'Italia',
-    type: 'cup',
-    homeTeam: 'Juventus',
-    awayTeam: 'Lazio',
-    hoursFromNow: 18,
-    odds1: 1.88,
-    oddsX: 3.40,
-    odds2: 4.30,
-    oddsOver25: 1.95,
-    oddsGoal: 1.85,
-    homeRoster: {
-      striker: 'Dušan Vlahović',
-      winger: 'Kenan Yıldız',
-      midfielder: 'Teun Koopmeiners',
-      defender: 'Federico Gatti',
-      formation: '4-2-3-1',
-      coachNote: 'Vlahović titolare in coppa con Yıldız e Koopmeiners sulla trequarti.'
-    },
-    awayRoster: {
-      striker: 'Valentín Castellanos',
-      winger: 'Mattia Zaccagni',
-      midfielder: 'Matteo Guendouzi',
-      defender: 'Alessio Romagnoli',
-      formation: '4-2-3-1',
-      coachNote: 'Castellanos riferimento d\'attacco; Zaccagni capitano e tiratore dal dischetto.'
-    },
-    tacticalContext: 'Gara a eliminazione diretta di Coppa Italia con massima attenzione e ritmi controllati.'
-  },
-  {
-    id: 'uel-rom-ath',
-    competitionId: 'soccer_uefa_europa_league',
-    competitionName: 'UEFA Europa League',
-    country: 'Europa',
-    type: 'cup',
-    homeTeam: 'Roma',
-    awayTeam: 'Athletic Bilbao',
-    hoursFromNow: 20,
-    odds1: 2.05,
-    oddsX: 3.35,
-    odds2: 3.65,
-    oddsOver25: 1.80,
-    oddsGoal: 1.72,
-    homeRoster: {
-      striker: 'Artem Dovbyk',
-      winger: 'Paulo Dybala',
-      midfielder: 'Lorenzo Pellegrini',
-      defender: 'Gianluca Mancini',
-      formation: '3-4-2-1',
-      coachNote: 'Dovbyk terminale offensivo con la classe di Dybala a ridosso dell\'area.'
-    },
-    awayRoster: {
-      striker: 'Gorka Guruzeta',
-      winger: 'Nico Williams',
-      midfielder: 'Oihan Sancet',
-      defender: 'Dani Vivian',
-      formation: '4-2-3-1',
-      coachNote: 'Nico Williams pericolo costante sulla sinistra; Sancet incursore.'
-    },
-    tacticalContext: 'Notte europea all\'Olimpico: giallorossi decisi a sfruttare il fattore campo contro la velocità basca.'
-  },
-  {
-    id: 'ci-mil-ata',
-    competitionId: 'soccer_italy_coppa_italia',
-    competitionName: 'Coppa Italia',
-    country: 'Italia',
-    type: 'cup',
-    homeTeam: 'Milan',
-    awayTeam: 'Atalanta',
-    hoursFromNow: 25,
-    odds1: 2.15,
-    oddsX: 3.45,
-    odds2: 3.30,
-    oddsOver25: 1.72,
-    oddsGoal: 1.62,
-    homeRoster: {
-      striker: 'Álvaro Morata',
-      winger: 'Rafael Leão',
-      midfielder: 'Christian Pulisic',
-      defender: 'Fikayo Tomori',
-      formation: '4-2-3-1',
-      coachNote: 'Leão e Pulisic sugli esterni con Morata al centro dell\'attacco rossonero.'
-    },
-    awayRoster: {
-      striker: 'Mateo Retegui',
-      winger: 'Ademola Lookman',
-      midfielder: 'Charles De Ketelaere',
-      defender: 'Sead Kolašinac',
-      formation: '3-4-2-1',
-      coachNote: 'De Ketelaere da ex a San Siro con Retegui e Lookman in forma smagliante.'
-    },
-    tacticalContext: 'Quarto di finale di Coppa Italia spettacolare e ricco di ribaltamenti di fronte.'
-  },
-  {
-    id: 'uecl-fio-bet',
-    competitionId: 'soccer_uefa_conference_league',
-    competitionName: 'UEFA Conference League',
-    country: 'Europa',
-    type: 'cup',
-    homeTeam: 'Fiorentina',
-    awayTeam: 'Real Betis',
-    hoursFromNow: 28,
-    odds1: 2.10,
-    oddsX: 3.30,
-    odds2: 3.50,
-    oddsOver25: 1.85,
-    oddsGoal: 1.70,
-    homeRoster: {
-      striker: 'Moise Kean',
-      winger: 'Albert Guðmundsson',
-      midfielder: 'Andrea Colpani',
-      defender: 'Luca Ranieri',
-      formation: '4-2-3-1',
-      coachNote: 'Kean trascinatore offensivo della viola nelle notti di Conference League.'
-    },
-    awayRoster: {
-      striker: 'Vitor Roque',
-      winger: 'Giovani Lo Celso',
-      midfielder: 'Pablo Fornals',
-      defender: 'Marc Bartra',
-      formation: '4-2-3-1',
-      coachNote: 'Vitor Roque punta rapida, Lo Celso cervello e uomo dell\'ultimo passaggio per gli spagnoli.'
-    },
-    tacticalContext: 'Ritmo e pressione viola sulle fasce contro il palleggio e la tecnica iberica del Betis.'
-  },
-  {
-    id: 'ucl-bar-bay',
-    competitionId: 'soccer_uefa_champs_league',
-    competitionName: 'UEFA Champions League',
-    country: 'Europa',
-    type: 'cup',
-    homeTeam: 'Barcelona',
-    awayTeam: 'Bayern Munich',
-    hoursFromNow: 32,
-    odds1: 2.35,
-    oddsX: 3.70,
-    odds2: 2.75,
-    oddsOver25: 1.40,
-    oddsGoal: 1.42,
-    homeRoster: {
-      striker: 'Robert Lewandowski',
-      winger: 'Lamine Yamal',
-      midfielder: 'Raphinha',
-      defender: 'Jules Koundé',
-      formation: '4-3-3',
-      coachNote: 'Lamine Yamal e Raphinha inarrestabili sugli esterni a servizio di Lewandowski.'
-    },
-    awayRoster: {
-      striker: 'Harry Kane',
-      winger: 'Michael Olise',
-      midfielder: 'Jamal Musiala',
-      defender: 'Joshua Kimmich',
-      formation: '4-2-3-1',
-      coachNote: 'Harry Kane e Musiala formano una delle coppie offensive più prolifiche d\'Europa.'
-    },
-    tacticalContext: 'Partita di cartello assoluto con due squadre che attaccano ad oltranza.'
-  },
-  {
-    id: 'ucl-liv-psg',
-    competitionId: 'soccer_uefa_champs_league',
-    competitionName: 'UEFA Champions League',
-    country: 'Europa',
-    type: 'cup',
-    homeTeam: 'Liverpool',
-    awayTeam: 'PSG',
-    hoursFromNow: 38,
-    odds1: 1.95,
-    oddsX: 3.75,
-    odds2: 3.60,
-    oddsOver25: 1.50,
-    oddsGoal: 1.48,
-    homeRoster: {
-      striker: 'Darwin Núñez',
-      winger: 'Mohamed Salah',
-      midfielder: 'Alexis Mac Allister',
-      defender: 'Virgil van Dijk',
-      formation: '4-3-3',
-      coachNote: 'Salah immancabile a destra ad Anfield con Luis Díaz e Mac Allister.'
-    },
-    awayRoster: {
-      striker: 'Ousmane Dembélé',
-      winger: 'Bradley Barcola',
-      midfielder: 'Vitinha',
-      defender: 'Marquinhos',
-      formation: '4-3-3',
-      coachNote: 'Velocità pura sulle fasce con Dembélé e Barcola per scardinare la difesa dei Reds.'
-    },
-    tacticalContext: 'Transizioni fulminee e intensità da Premier League contro la qualità tecnica dei parigini.'
-  },
-  {
-    id: 'fac-che-new',
-    competitionId: 'soccer_fa_cup',
-    competitionName: 'FA Cup',
-    country: 'Inghilterra',
-    type: 'cup',
-    homeTeam: 'Chelsea',
-    awayTeam: 'Newcastle',
-    hoursFromNow: 44,
-    odds1: 2.00,
-    oddsX: 3.55,
-    odds2: 3.50,
-    oddsOver25: 1.62,
-    oddsGoal: 1.55,
-    homeRoster: {
-      striker: 'Nicolas Jackson',
-      winger: 'Cole Palmer',
-      midfielder: 'Moises Caicedo',
-      defender: 'Levi Colwill',
-      formation: '4-2-3-1',
-      coachNote: 'Cole Palmer protagonista designato sui tiri e sui calci di rigore per i Blues.'
-    },
-    awayRoster: {
-      striker: 'Alexander Isak',
-      winger: 'Anthony Gordon',
-      midfielder: 'Bruno Guimarães',
-      defender: 'Fabian Schär',
-      formation: '4-3-3',
-      coachNote: 'Isak punta rapida e fredda sotto porta, Gordon devastante negli spazi aperti.'
-    },
-    tacticalContext: 'Sfida a eliminazione diretta di FA Cup giocata a ritmi infernali da entrambi i lati.'
-  },
-  {
-    id: 'cdr-ath-sev',
-    competitionId: 'soccer_spain_copa_del_rey',
-    competitionName: 'Copa del Rey',
-    country: 'Spagna',
-    type: 'cup',
-    homeTeam: 'Athletic Bilbao',
-    awayTeam: 'Sevilla',
-    hoursFromNow: 50,
-    odds1: 1.80,
-    oddsX: 3.50,
-    odds2: 4.50,
-    oddsOver25: 1.90,
-    oddsGoal: 1.82,
-    homeRoster: {
-      striker: 'Iñaki Williams',
-      winger: 'Nico Williams',
-      midfielder: 'Oihan Sancet',
-      defender: 'Yeray Álvarez',
-      formation: '4-2-3-1',
-      coachNote: 'I fratelli Williams titolari insieme a San Mamés per trascinare il Bilbao.'
-    },
-    awayRoster: {
-      striker: 'Isaac Romero',
-      winger: 'Dodi Lukebakio',
-      midfielder: 'Saúl Ñíguez',
-      defender: 'Loïc Badé',
-      formation: '4-3-3',
-      coachNote: 'Lukebakio e Romero incaricati delle ripartenze veloci per gli andalusi.'
-    },
-    tacticalContext: 'San Mamés è un catino infuocato in Copa del Rey, con forte spinta sulle corsie esterne.'
-  },
+export function getMatchCommenceTime(m: StaticMatchBlueprint, now = Date.now()): string {
+  if (m.kickoffTimeUTC) {
+    return m.kickoffTimeUTC;
+  }
+  const h = getMatchHoursFromNow(m, now);
+  return new Date(now + h * 3600 * 1000).toISOString();
+}
 
-  // --- 3. ALTRO (UEFA NATIONS LEAGUE, QUALIFICAZIONI MONDIALI) ---
+export const STATIC_MATCHES: StaticMatchBlueprint[] = [
   {
-    id: 'unl-ita-fra',
-    competitionId: 'soccer_uefa_nations_league',
-    competitionName: 'UEFA Nations League',
-    country: 'Europa',
-    type: 'other',
-    homeTeam: 'Italia',
-    awayTeam: 'Francia',
-    hoursFromNow: 40,
-    odds1: 2.75,
-    oddsX: 3.15,
-    odds2: 2.65,
-    oddsOver25: 1.95,
-    oddsGoal: 1.80,
-    homeRoster: {
-      striker: 'Mateo Retegui',
-      winger: 'Federico Dimarco',
-      midfielder: 'Nicolò Barella',
-      defender: 'Alessandro Bastoni',
-      formation: '3-5-1-1',
-      coachNote: 'Retegui terminale offensivo, Barella e Tonali a dominare la mediana azzurra.'
+    "id": "ucl-fey-int",
+    "competitionId": "soccer_uefa_champs_league",
+    "competitionName": "UEFA Champions League",
+    "country": "Europa",
+    "type": "cup",
+    "homeTeam": "Feyenoord",
+    "awayTeam": "Internazionale",
+    "kickoffTimeUTC": "2026-11-03T20:00:00Z",
+    "hoursFromNow": 19,
+    "odds1": 3.4,
+    "oddsX": 3.5,
+    "odds2": 2.1,
+    "oddsOver25": 1.75,
+    "oddsGoal": 1.65,
+    "homeRoster": {
+      "striker": "Santiago Giménez",
+      "winger": "Igor Paixão",
+      "midfielder": "Quinten Timber",
+      "defender": "Dávid Hancko",
+      "formation": "4-3-3",
+      "coachNote": "Giménez ed Igor Paixão punti di forza offensivi del Feyenoord al De Kuip; Timber faro di centrocampo."
     },
-    awayRoster: {
-      striker: 'Marcus Thuram',
-      winger: 'Bradley Barcola',
-      midfielder: 'Eduardo Camavinga',
-      defender: 'William Saliba',
-      formation: '4-3-3',
-      coachNote: 'Thuram prima punta dei Bleus con la qualità e la velocità di Barcola e Nkunku.'
+    "awayRoster": {
+      "striker": "Lautaro Martínez",
+      "winger": "Marcus Thuram",
+      "midfielder": "Hakan Çalhanoğlu",
+      "defender": "Alessandro Bastoni",
+      "formation": "3-5-2",
+      "coachNote": "Lautaro Martínez e Thuram confermati tandem titolare da Inzaghi; Çalhanoğlu rigorista designato."
     },
-    tacticalContext: 'Grande classica internazionale con altissimo tasso tecnico ed equilibrio tattico.'
+    "tacticalContext": "Big match al De Kuip di Rotterdam: Inter solida e pronta alle verticalizzazioni rapide con Thuram, Feyenoord aggressivo nei primi 30 minuti con baricentro alto."
   },
   {
-    id: 'unl-ger-ola',
-    competitionId: 'soccer_uefa_nations_league',
-    competitionName: 'UEFA Nations League',
-    country: 'Europa',
-    type: 'other',
-    homeTeam: 'Germania',
-    awayTeam: 'Olanda',
-    hoursFromNow: 62,
-    odds1: 1.92,
-    oddsX: 3.65,
-    odds2: 3.75,
-    oddsOver25: 1.58,
-    oddsGoal: 1.52,
-    homeRoster: {
-      striker: 'Kai Havertz',
-      winger: 'Florian Wirtz',
-      midfielder: 'Jamal Musiala',
-      defender: 'Antonio Rüdiger',
-      formation: '4-2-3-1',
-      coachNote: 'Wirtz e Musiala gemelli del gol a sostegno di Havertz.'
+    "id": "ucl-atm-bay",
+    "competitionId": "soccer_uefa_champs_league",
+    "competitionName": "UEFA Champions League",
+    "country": "Europa",
+    "type": "cup",
+    "homeTeam": "Atlético Madrid",
+    "awayTeam": "Bayern Munich",
+    "kickoffTimeUTC": "2026-11-03T20:00:00Z",
+    "hoursFromNow": 19,
+    "odds1": 2.85,
+    "oddsX": 3.6,
+    "odds2": 2.35,
+    "oddsOver25": 1.62,
+    "oddsGoal": 1.55,
+    "homeRoster": {
+      "striker": "Julián Álvarez",
+      "winger": "Antoine Griezmann",
+      "midfielder": "Rodrigo De Paul",
+      "defender": "José María Giménez",
+      "formation": "4-4-2",
+      "coachNote": "Julián Álvarez e Antoine Griezmann tandem d'attacco letale al Metropolitano con compiti di raccordo."
     },
-    awayRoster: {
-      striker: 'Cody Gakpo',
-      winger: 'Xavi Simons',
-      midfielder: 'Tijjani Reijnders',
-      defender: 'Virgil van Dijk',
-      formation: '4-3-3',
-      coachNote: 'Gakpo e Simons punti fermi del tridente oranje; Reijnders incursore.'
+    "awayRoster": {
+      "striker": "Harry Kane",
+      "winger": "Michael Olise",
+      "midfielder": "Jamal Musiala",
+      "defender": "Dayot Upamecano",
+      "formation": "4-2-3-1",
+      "coachNote": "Harry Kane terminale offensivo implacabile e rigorista, con la creatività di Musiala e Olise alle sue spalle."
     },
-    tacticalContext: 'Tradizionale derby europeo ricco di gol e ribaltamenti continui.'
+    "tacticalContext": "Scontro stellare al Wanda Metropolitano: difesa asfissiante di Simeone contro la straordinaria capacità realizzativa del Bayern guidato da Harry Kane."
   },
   {
-    id: 'wcq-ing-bel',
-    competitionId: 'soccer_fifa_world_cup_qualifiers_europe',
-    competitionName: 'Qualificazioni Mondiali (Europa)',
-    country: 'Europa',
-    type: 'other',
-    homeTeam: 'Inghilterra',
-    awayTeam: 'Belgio',
-    hoursFromNow: 80,
-    odds1: 1.70,
-    oddsX: 3.75,
-    odds2: 4.80,
-    oddsOver25: 1.75,
-    oddsGoal: 1.75,
-    homeRoster: {
-      striker: 'Harry Kane',
-      winger: 'Bukayo Saka',
-      midfielder: 'Jude Bellingham',
-      defender: 'John Stones',
-      formation: '4-2-3-1',
-      coachNote: 'Kane capitano e leader, Bellingham incursore alle sue spalle.'
+    "id": "ucl-bar-asv",
+    "competitionId": "soccer_uefa_champs_league",
+    "competitionName": "UEFA Champions League",
+    "country": "Europa",
+    "type": "cup",
+    "homeTeam": "Barcelona",
+    "awayTeam": "Aston Villa",
+    "kickoffTimeUTC": "2026-11-03T20:00:00Z",
+    "hoursFromNow": 19,
+    "odds1": 1.52,
+    "oddsX": 4.6,
+    "odds2": 5.6,
+    "oddsOver25": 1.45,
+    "oddsGoal": 1.58,
+    "homeRoster": {
+      "striker": "Robert Lewandowski",
+      "winger": "Lamine Yamal",
+      "midfielder": "Pedri",
+      "defender": "Pau Cubarsí",
+      "formation": "4-3-3",
+      "coachNote": "Lewandowski centravanti con Lamine Yamal e Raphinha sulle corsie esterne; trappola del fuorigioco alta."
     },
-    awayRoster: {
-      striker: 'Romelu Lukaku',
-      winger: 'Jérémy Doku',
-      midfielder: 'Kevin De Bruyne',
-      defender: 'Wout Faes',
-      formation: '4-3-3',
-      coachNote: 'De Bruyne e Doku cercheranno di innescare la fisicità di Lukaku a Wembley.'
+    "awayRoster": {
+      "striker": "Ollie Watkins",
+      "winger": "Leon Bailey",
+      "midfielder": "Morgan Rogers",
+      "defender": "Ezri Konsa",
+      "formation": "4-2-3-1",
+      "coachNote": "Watkins terminale veloce e letale in profondità supportato da Morgan Rogers e Bailey."
     },
-    tacticalContext: 'Sfida decisiva per le qualificazioni mondiali tra due corazzate europee.'
+    "tacticalContext": "Barcellona dominante nel possesso e nel recupero palla immediato; Aston Villa di Emery pericolosissimo a ribaltare l'azione in verticale."
+  },
+  {
+    "id": "ucl-mun-rom",
+    "competitionId": "soccer_uefa_champs_league",
+    "competitionName": "UEFA Champions League",
+    "country": "Europa",
+    "type": "cup",
+    "homeTeam": "Manchester United",
+    "awayTeam": "AS Roma",
+    "kickoffTimeUTC": "2026-11-03T20:00:00Z",
+    "hoursFromNow": 19,
+    "odds1": 1.95,
+    "oddsX": 3.55,
+    "odds2": 3.8,
+    "oddsOver25": 1.72,
+    "oddsGoal": 1.66,
+    "homeRoster": {
+      "striker": "Rasmus Højlund",
+      "winger": "Alejandro Garnacho",
+      "midfielder": "Bruno Fernandes",
+      "defender": "Lisandro Martínez",
+      "formation": "4-2-3-1",
+      "coachNote": "Bruno Fernandes leader tecnico, tiratore di rigori e punizioni con Garnacho e Højlund in attacco."
+    },
+    "awayRoster": {
+      "striker": "Artem Dovbyk",
+      "winger": "Paulo Dybala",
+      "midfielder": "Lorenzo Pellegrini",
+      "defender": "Gianluca Mancini",
+      "formation": "3-4-2-1",
+      "coachNote": "Dovbyk centravanti d'area supportato dalla classe di Paulo Dybala e gli inserimenti di Pellegrini."
+    },
+    "tacticalContext": "Notte di gala europea a Old Trafford: lo United cerca il riscatto offensivo, la Roma è pronta a pungere sui calci piazzati e nelle transizioni."
+  },
+  {
+    "id": "ucl-vil-psg",
+    "competitionId": "soccer_uefa_champs_league",
+    "competitionName": "UEFA Champions League",
+    "country": "Europa",
+    "type": "cup",
+    "homeTeam": "Villarreal",
+    "awayTeam": "Paris Saint-Germain",
+    "kickoffTimeUTC": "2026-11-03T20:00:00Z",
+    "hoursFromNow": 19,
+    "odds1": 3.6,
+    "oddsX": 3.75,
+    "odds2": 1.95,
+    "oddsOver25": 1.58,
+    "oddsGoal": 1.52,
+    "homeRoster": {
+      "striker": "Ayoze Pérez",
+      "winger": "Álex Baena",
+      "midfielder": "Dani Parejo",
+      "defender": "Raúl Albiol",
+      "formation": "4-4-2",
+      "coachNote": "Ayoze Pérez punta d'area con i filtranti di Baena e le geometrie di Parejo su punizione."
+    },
+    "awayRoster": {
+      "striker": "Ousmane Dembélé",
+      "winger": "Bradley Barcola",
+      "midfielder": "Vitinha",
+      "defender": "Achraf Hakimi",
+      "formation": "4-3-3",
+      "coachNote": "Tridente rapidissimo con Dembélé e Barcola, Hakimi spinge a tutta fascia a destra."
+    },
+    "tacticalContext": "Gara a viso aperto all'Estadio de la Cerámica: Villarreal organizzato ed efficace contro il ritmo forsennato e la tecnica del PSG."
+  },
+  {
+    "id": "ucl-gal-stu",
+    "competitionId": "soccer_uefa_champs_league",
+    "competitionName": "UEFA Champions League",
+    "country": "Europa",
+    "type": "cup",
+    "homeTeam": "Galatasaray",
+    "awayTeam": "VfB Stuttgart",
+    "kickoffTimeUTC": "2026-11-03T17:45:00Z",
+    "hoursFromNow": 16,
+    "odds1": 2.3,
+    "oddsX": 3.5,
+    "odds2": 2.95,
+    "oddsOver25": 1.65,
+    "oddsGoal": 1.55,
+    "homeRoster": {
+      "striker": "Victor Osimhen",
+      "winger": "Barış Alper Yılmaz",
+      "midfielder": "Gabriel Sara",
+      "defender": "Davinson Sánchez",
+      "formation": "4-2-3-1",
+      "coachNote": "Victor Osimhen terminale offensivo dominante nel catino infernale del RAMS Park."
+    },
+    "awayRoster": {
+      "striker": "Ermedin Demirović",
+      "winger": "Deniz Undav",
+      "midfielder": "Angelo Stiller",
+      "defender": "Jeff Chabot",
+      "formation": "4-2-2-2",
+      "coachNote": "Coppia Undav - Demirović in grande affiatamento e mobilità continua a ridosso dell'area avversaria."
+    },
+    "tacticalContext": "Ambiente infuocato ad Istanbul: Galatasaray trascinato dalla fisicità di Osimhen contro il pressing organizzato dello Stoccarda."
+  },
+  {
+    "id": "ucl-sha-spo",
+    "competitionId": "soccer_uefa_champs_league",
+    "competitionName": "UEFA Champions League",
+    "country": "Europa",
+    "type": "cup",
+    "homeTeam": "Shakhtar Donetsk",
+    "awayTeam": "Sporting CP",
+    "kickoffTimeUTC": "2026-11-03T17:45:00Z",
+    "hoursFromNow": 16,
+    "odds1": 4.1,
+    "oddsX": 3.7,
+    "odds2": 1.85,
+    "oddsOver25": 1.7,
+    "oddsGoal": 1.68,
+    "homeRoster": {
+      "striker": "Danylo Sikan",
+      "winger": "Georgiy Sudakov",
+      "midfielder": "Taras Stepanenko",
+      "defender": "Mykola Matviyenko",
+      "formation": "4-3-3",
+      "coachNote": "Georgiy Sudakov stella tecnica della mediana con libertà di inventare negli ultimi 30 metri."
+    },
+    "awayRoster": {
+      "striker": "Viktor Gyökeres",
+      "winger": "Trincão",
+      "midfielder": "Morten Hjulmand",
+      "defender": "Gonçalo Inácio",
+      "formation": "3-4-2-1",
+      "coachNote": "Viktor Gyökeres capocannoniere e trascinatore assoluto dello Sporting con medie realizzative da record."
+    },
+    "tacticalContext": "Lo strapotere fisico e la media gol di Gyökeres costituiscono una costante minaccia per la linea difensiva ucraina."
+  },
+  {
+    "id": "ucl-bod-lil",
+    "competitionId": "soccer_uefa_champs_league",
+    "competitionName": "UEFA Champions League",
+    "country": "Europa",
+    "type": "cup",
+    "homeTeam": "Bodo/Glimt",
+    "awayTeam": "Lille",
+    "kickoffTimeUTC": "2026-11-03T20:00:00Z",
+    "hoursFromNow": 19,
+    "odds1": 2.75,
+    "oddsX": 3.4,
+    "odds2": 2.5,
+    "oddsOver25": 1.75,
+    "oddsGoal": 1.62,
+    "homeRoster": {
+      "striker": "Kasper Høgh",
+      "winger": "Jens Petter Hauge",
+      "midfielder": "Patrick Berg",
+      "defender": "Jostein Gundersen",
+      "formation": "4-3-3",
+      "coachNote": "Jens Petter Hauge imprendibile nell'uno contro uno sul sintetico dell'Aspmyra Stadion."
+    },
+    "awayRoster": {
+      "striker": "Jonathan David",
+      "winger": "Edon Zhegrova",
+      "midfielder": "Angel Gomes",
+      "defender": "Bafodé Diakité",
+      "formation": "4-2-3-1",
+      "coachNote": "Jonathan David infallibile finalizzatore e rigorista, Zhegrova punta a creare superiorità a destra."
+    },
+    "tacticalContext": "Campo sintetico e clima rigido del circolo polare artico a favore del Bodo, Lille chiamato a reggere l'urto atletico iniziale."
+  },
+  {
+    "id": "ucl-las-slo",
+    "competitionId": "soccer_uefa_champs_league",
+    "competitionName": "UEFA Champions League",
+    "country": "Europa",
+    "type": "cup",
+    "homeTeam": "LASK Linz",
+    "awayTeam": "Slovan Bratislava",
+    "kickoffTimeUTC": "2026-11-03T20:00:00Z",
+    "hoursFromNow": 19,
+    "odds1": 1.8,
+    "oddsX": 3.65,
+    "odds2": 4.4,
+    "oddsOver25": 1.8,
+    "oddsGoal": 1.75,
+    "homeRoster": {
+      "striker": "Marin Ljubičić",
+      "winger": "Robert Žulj",
+      "midfielder": "Sascha Horvath",
+      "defender": "Philipp Ziereis",
+      "formation": "4-2-3-1",
+      "coachNote": "Žulj direttore d'orchestra sulla trequarti con Ljubičić punta mobile d'area."
+    },
+    "awayRoster": {
+      "striker": "David Strelec",
+      "winger": "Vladimír Weiss",
+      "midfielder": "Juraj Kucka",
+      "defender": "Guram Kashia",
+      "formation": "4-3-3",
+      "coachNote": "Esperienza europea di Juraj Kucka e Weiss per guidare i giovani dello Slovan."
+    },
+    "tacticalContext": "Gara chiave per la qualificazione con LASK che fa valere l'intensità casalinga contro la solidità difensiva slovacca."
+  },
+  {
+    "id": "ucl-por-nap",
+    "competitionId": "soccer_uefa_champs_league",
+    "competitionName": "UEFA Champions League",
+    "country": "Europa",
+    "type": "cup",
+    "homeTeam": "FC Porto",
+    "awayTeam": "Napoli",
+    "kickoffTimeUTC": "2026-11-04T20:00:00Z",
+    "hoursFromNow": 43,
+    "odds1": 2.7,
+    "oddsX": 3.35,
+    "odds2": 2.6,
+    "oddsOver25": 1.82,
+    "oddsGoal": 1.68,
+    "homeRoster": {
+      "striker": "Samu Omorodion",
+      "winger": "Galeno",
+      "midfielder": "Alan Varela",
+      "defender": "Nehuén Pérez",
+      "formation": "4-2-3-1",
+      "coachNote": "Omorodion centravanti dominante e Galeno freccia sulla corsia sinistra all'Estádio do Dragão."
+    },
+    "awayRoster": {
+      "striker": "Romelu Lukaku",
+      "winger": "Khvicha Kvaratskhelia",
+      "midfielder": "Scott McTominay",
+      "defender": "Giovanni Di Lorenzo",
+      "formation": "4-3-3",
+      "coachNote": "Lukaku riferimento con Kvaratskhelia e gli inserimenti aerei di McTominay a supporto."
+    },
+    "tacticalContext": "Sfida ad alta intensità a Oporto: il Napoli cerca punti chiave in Champions puntando sulla fisicità di Lukaku e la creatività di Kvara."
+  },
+  {
+    "id": "ucl-aek-rma",
+    "competitionId": "soccer_uefa_champs_league",
+    "competitionName": "UEFA Champions League",
+    "country": "Europa",
+    "type": "cup",
+    "homeTeam": "AEK Athens",
+    "awayTeam": "Real Madrid",
+    "kickoffTimeUTC": "2026-11-04T17:45:00Z",
+    "hoursFromNow": 40,
+    "odds1": 8.5,
+    "oddsX": 5.2,
+    "odds2": 1.33,
+    "oddsOver25": 1.48,
+    "oddsGoal": 1.78,
+    "homeRoster": {
+      "striker": "Levi García",
+      "winger": "Erik Lamela",
+      "midfielder": "Orbelín Pineda",
+      "defender": "Domagoj Vida",
+      "formation": "4-2-3-1",
+      "coachNote": "Lamela ed Erik García cercheranno di accendere la bolgia di Atene."
+    },
+    "awayRoster": {
+      "striker": "Kylian Mbappé",
+      "winger": "Vinícius Júnior",
+      "midfielder": "Jude Bellingham",
+      "defender": "Antonio Rüdiger",
+      "formation": "4-3-1-2",
+      "coachNote": "Mbappé e Vinícius con Bellingham trequartista e incursore d'area."
+    },
+    "tacticalContext": "I Blancos controllano i ritmi con la straordinaria classe di Bellingham e le accelerazioni di Mbappé e Vinícius."
+  },
+  {
+    "id": "ucl-fen-liv",
+    "competitionId": "soccer_uefa_champs_league",
+    "competitionName": "UEFA Champions League",
+    "country": "Europa",
+    "type": "cup",
+    "homeTeam": "Fenerbahce",
+    "awayTeam": "Liverpool",
+    "kickoffTimeUTC": "2026-11-04T17:45:00Z",
+    "hoursFromNow": 40,
+    "odds1": 4.8,
+    "oddsX": 4.2,
+    "odds2": 1.65,
+    "oddsOver25": 1.55,
+    "oddsGoal": 1.6,
+    "homeRoster": {
+      "striker": "Edin Džeko",
+      "winger": "Dušan Tadić",
+      "midfielder": "Fred",
+      "defender": "Çağlar Söyüncü",
+      "formation": "4-2-3-1",
+      "coachNote": "Džeko e Tadić assi d'esperienza spinti dal pubblico di Istanbul."
+    },
+    "awayRoster": {
+      "striker": "Mohamed Salah",
+      "winger": "Luis Díaz",
+      "midfielder": "Alexis Mac Allister",
+      "defender": "Virgil van Dijk",
+      "formation": "4-3-3",
+      "coachNote": "Mohamed Salah stella inamovibile e rigorista dei Reds con Díaz."
+    },
+    "tacticalContext": "Test di grande carattere per il Liverpool di Slot in una delle arene più calde d'Europa."
+  },
+  {
+    "id": "ucl-bvb-bet",
+    "competitionId": "soccer_uefa_champs_league",
+    "competitionName": "UEFA Champions League",
+    "country": "Europa",
+    "type": "cup",
+    "homeTeam": "Borussia Dortmund",
+    "awayTeam": "Real Betis",
+    "kickoffTimeUTC": "2026-11-04T20:00:00Z",
+    "hoursFromNow": 43,
+    "odds1": 1.65,
+    "oddsX": 4,
+    "odds2": 5,
+    "oddsOver25": 1.6,
+    "oddsGoal": 1.65,
+    "homeRoster": {
+      "striker": "Serhou Guirassy",
+      "winger": "Jamie Gittens",
+      "midfielder": "Julian Brandt",
+      "defender": "Nico Schlotterbeck",
+      "formation": "4-2-3-1",
+      "coachNote": "Guirassy implacabile al Signal Iduna Park con Brandt rifinitore."
+    },
+    "awayRoster": {
+      "striker": "Vitor Roque",
+      "winger": "Ez Abde",
+      "midfielder": "Giovani Lo Celso",
+      "defender": "Diego Llorente",
+      "formation": "4-2-3-1",
+      "coachNote": "Lo Celso cervello della manovra andalusa con Vitor Roque terminale."
+    },
+    "tacticalContext": "Muro Giallo alle spalle del Dortmund per superare un Betis abile nel palleggio ma vulnerabile alle ripartenze rapide."
+  },
+  {
+    "id": "ucl-rbl-mci",
+    "competitionId": "soccer_uefa_champs_league",
+    "competitionName": "UEFA Champions League",
+    "country": "Europa",
+    "type": "cup",
+    "homeTeam": "RB Leipzig",
+    "awayTeam": "Manchester City",
+    "kickoffTimeUTC": "2026-11-04T20:00:00Z",
+    "hoursFromNow": 43,
+    "odds1": 4.5,
+    "oddsX": 4.2,
+    "odds2": 1.7,
+    "oddsOver25": 1.5,
+    "oddsGoal": 1.55,
+    "homeRoster": {
+      "striker": "Loïs Openda",
+      "winger": "Xavi Simons",
+      "midfielder": "Amadou Haidara",
+      "defender": "Willi Orbán",
+      "formation": "4-2-2-2",
+      "coachNote": "Openda e Xavi Simons contropiedisti micidiali."
+    },
+    "awayRoster": {
+      "striker": "Erling Haaland",
+      "winger": "Savinho",
+      "midfielder": "Phil Foden",
+      "defender": "Rúben Dias",
+      "formation": "4-1-4-1",
+      "coachNote": "Haaland grande ex della sfida affiancato da Foden e Bernardo Silva."
+    },
+    "tacticalContext": "Duello di grande velocità e talento: City col solito possesso prolungato, Lipsia letale in campo lungo con Openda."
+  },
+  {
+    "id": "ucl-sla-ars",
+    "competitionId": "soccer_uefa_champs_league",
+    "competitionName": "UEFA Champions League",
+    "country": "Europa",
+    "type": "cup",
+    "homeTeam": "Slavia Prague",
+    "awayTeam": "Arsenal",
+    "kickoffTimeUTC": "2026-11-04T20:00:00Z",
+    "hoursFromNow": 43,
+    "odds1": 6.5,
+    "oddsX": 4.5,
+    "odds2": 1.48,
+    "oddsOver25": 1.62,
+    "oddsGoal": 1.75,
+    "homeRoster": {
+      "striker": "Tomáš Chorý",
+      "winger": "Lukáš Provod",
+      "midfielder": "Christos Zafeiris",
+      "defender": "Tomáš Holeš",
+      "formation": "3-4-2-1",
+      "coachNote": "Fisicità di Chorý a centro area e compattezza ceca."
+    },
+    "awayRoster": {
+      "striker": "Kai Havertz",
+      "winger": "Bukayo Saka",
+      "midfielder": "Declan Rice",
+      "defender": "Gabriel Magalhães",
+      "formation": "4-3-3",
+      "coachNote": "Saka capitano e specialista dei piazzati con la pericolosità aerea di Gabriel sui corner."
+    },
+    "tacticalContext": "Gunners favoriti ma Slavia coriacea e aggressiva sui contrasti nei primi 45 minuti."
+  },
+  {
+    "id": "ucl-len-com",
+    "competitionId": "soccer_uefa_champs_league",
+    "competitionName": "UEFA Champions League",
+    "country": "Europa",
+    "type": "cup",
+    "homeTeam": "Lens",
+    "awayTeam": "Como",
+    "kickoffTimeUTC": "2026-11-04T20:00:00Z",
+    "hoursFromNow": 43,
+    "odds1": 2.05,
+    "oddsX": 3.45,
+    "odds2": 3.6,
+    "oddsOver25": 1.85,
+    "oddsGoal": 1.72,
+    "homeRoster": {
+      "striker": "Florian Sotoca",
+      "winger": "Wesley Saïd",
+      "midfielder": "Andy Diouf",
+      "defender": "Kevin Danso",
+      "formation": "3-4-1-2",
+      "coachNote": "Stadio Bollaert-Delelis gremito a spingere il Lens."
+    },
+    "awayRoster": {
+      "striker": "Patrick Cutrone",
+      "winger": "Gabriel Strefezza",
+      "midfielder": "Nico Paz",
+      "defender": "Alberto Moreno",
+      "formation": "4-2-3-1",
+      "coachNote": "Nico Paz stella emergente con Cutrone lottatore d'area per la storica spedizione europea del Como."
+    },
+    "tacticalContext": "Match affascinante con la qualità di Nico Paz e Strefezza a testare l'intensità fisica del Lens."
+  },
+  {
+    "id": "ucl-psv-bru",
+    "competitionId": "soccer_uefa_champs_league",
+    "competitionName": "UEFA Champions League",
+    "country": "Europa",
+    "type": "cup",
+    "homeTeam": "PSV Eindhoven",
+    "awayTeam": "Club Brugge",
+    "kickoffTimeUTC": "2026-11-04T20:00:00Z",
+    "hoursFromNow": 43,
+    "odds1": 1.75,
+    "oddsX": 3.9,
+    "odds2": 4.4,
+    "oddsOver25": 1.58,
+    "oddsGoal": 1.6,
+    "homeRoster": {
+      "striker": "Luuk de Jong",
+      "winger": "Johan Bakayoko",
+      "midfielder": "Joey Veerman",
+      "defender": "Olivier Boscagli",
+      "formation": "4-3-3",
+      "coachNote": "De Jong insuperabile nel gioco aereo con Veerman dai calci d'angolo."
+    },
+    "awayRoster": {
+      "striker": "Ferran Jutglà",
+      "winger": "Andreas Skov Olsen",
+      "midfielder": "Hans Vanaken",
+      "defender": "Brandon Mechele",
+      "formation": "4-3-3",
+      "coachNote": "Skov Olsen rientra sul mancino e Vanaken guida la squadra con leadership."
+    },
+    "tacticalContext": "Derby del Benelux con tanti gol e frequenti tiri nello specchio della porta."
+  },
+  {
+    "id": "uel-mil-fer",
+    "competitionId": "soccer_uefa_europa_league",
+    "competitionName": "UEFA Europa League",
+    "country": "Europa",
+    "type": "cup",
+    "homeTeam": "AC Milan",
+    "awayTeam": "Ferencvaros",
+    "kickoffTimeUTC": "2026-11-05T17:45:00Z",
+    "hoursFromNow": 64,
+    "odds1": 1.3,
+    "oddsX": 5.5,
+    "odds2": 9.5,
+    "oddsOver25": 1.48,
+    "oddsGoal": 1.82,
+    "homeRoster": {
+      "striker": "Álvaro Morata",
+      "winger": "Rafael Leão",
+      "midfielder": "Christian Pulisic",
+      "defender": "Theo Hernández",
+      "formation": "4-2-3-1",
+      "coachNote": "Pulisic e Leão titolari inamovibili a San Siro; Morata prima punta di manovra."
+    },
+    "awayRoster": {
+      "striker": "Barnabás Varga",
+      "winger": "Adama Traoré",
+      "midfielder": "Mohammed Abu Fani",
+      "defender": "Endre Botka",
+      "formation": "4-2-3-1",
+      "coachNote": "Varga punto di riferimento aereo."
+    },
+    "tacticalContext": "Milan padrone del campo a San Siro con Theo e Leão a spingere con continuità sulla corsia mancina."
+  },
+  {
+    "id": "uel-az-juv",
+    "competitionId": "soccer_uefa_europa_league",
+    "competitionName": "UEFA Europa League",
+    "country": "Europa",
+    "type": "cup",
+    "homeTeam": "AZ Alkmaar",
+    "awayTeam": "Juventus",
+    "kickoffTimeUTC": "2026-11-05T20:00:00Z",
+    "hoursFromNow": 67,
+    "odds1": 3.5,
+    "oddsX": 3.4,
+    "odds2": 2.1,
+    "oddsOver25": 1.85,
+    "oddsGoal": 1.72,
+    "homeRoster": {
+      "striker": "Troy Parrott",
+      "winger": "Ruben van Bommel",
+      "midfielder": "Jordy Clasie",
+      "defender": "Wouter Goes",
+      "formation": "4-3-3",
+      "coachNote": "Van Bommel freccia a sinistra, Parrott terminale."
+    },
+    "awayRoster": {
+      "striker": "Dušan Vlahović",
+      "winger": "Kenan Yıldız",
+      "midfielder": "Teun Koopmeiners",
+      "defender": "Federico Gatti",
+      "formation": "4-2-3-1",
+      "coachNote": "Vlahović prima punta e rigorista, con Koopmeiners grande ex che torna in Olanda da protagonista."
+    },
+    "tacticalContext": "Koopmeiners sfida il suo passato: la Juventus cerca il controllo del ritmo e solidità difensiva per sbancare Alkmaar."
+  },
+  {
+    "id": "uel-rso-lyo",
+    "competitionId": "soccer_uefa_europa_league",
+    "competitionName": "UEFA Europa League",
+    "country": "Europa",
+    "type": "cup",
+    "homeTeam": "Real Sociedad",
+    "awayTeam": "Lyon",
+    "kickoffTimeUTC": "2026-11-05T17:45:00Z",
+    "hoursFromNow": 64,
+    "odds1": 1.9,
+    "oddsX": 3.55,
+    "odds2": 4,
+    "oddsOver25": 1.78,
+    "oddsGoal": 1.7,
+    "homeRoster": {
+      "striker": "Mikel Oyarzabal",
+      "winger": "Takefusa Kubo",
+      "midfielder": "Martín Zubimendi",
+      "defender": "Robin Le Normand",
+      "formation": "4-3-3",
+      "coachNote": "Kubo inarrestabile nell'uno contro uno con Oyarzabal rigorista."
+    },
+    "awayRoster": {
+      "striker": "Alexandre Lacazette",
+      "winger": "Rayan Cherki",
+      "midfielder": "Maxence Caqueret",
+      "defender": "Moussa Niakhaté",
+      "formation": "4-2-3-1",
+      "coachNote": "Lacazette capitano e rifinitore con i colpi di Cherki."
+    },
+    "tacticalContext": "All'Anoeta partita vibrante con la Real Sociedad che costruisce dal basso e il Lione rapido nel ribaltare l'azione."
+  },
+  {
+    "id": "uel-lev-mar",
+    "competitionId": "soccer_uefa_europa_league",
+    "competitionName": "UEFA Europa League",
+    "country": "Europa",
+    "type": "cup",
+    "homeTeam": "Bayer Leverkusen",
+    "awayTeam": "Marseille",
+    "kickoffTimeUTC": "2026-11-05T20:00:00Z",
+    "hoursFromNow": 67,
+    "odds1": 1.62,
+    "oddsX": 4.2,
+    "odds2": 5,
+    "oddsOver25": 1.55,
+    "oddsGoal": 1.62,
+    "homeRoster": {
+      "striker": "Victor Boniface",
+      "winger": "Florian Wirtz",
+      "midfielder": "Granit Xhaka",
+      "defender": "Jonathan Tah",
+      "formation": "3-4-2-1",
+      "coachNote": "Florian Wirtz genio della trequarti con Boniface perno offensivo."
+    },
+    "awayRoster": {
+      "striker": "Mason Greenwood",
+      "winger": "Elye Wahi",
+      "midfielder": "Pierre-Emile Højbjerg",
+      "defender": "Leonardo Balerdi",
+      "formation": "4-2-3-1",
+      "coachNote": "Greenwood miglior marcatore dell'OM supportato da Højbjerg a centrocampo."
+    },
+    "tacticalContext": "Intensità altissima alla BayArena tra il gioco avvolgente di Xabi Alonso e la verticalità voluta da De Zerbi."
+  },
+  {
+    "id": "uecl-ata-kai",
+    "competitionId": "soccer_uefa_europa_conference_league",
+    "competitionName": "UEFA Conference League",
+    "country": "Europa",
+    "type": "cup",
+    "homeTeam": "Atalanta",
+    "awayTeam": "Kairat Almaty",
+    "kickoffTimeUTC": "2026-11-05T17:45:00Z",
+    "hoursFromNow": 64,
+    "odds1": 1.18,
+    "oddsX": 7,
+    "odds2": 15,
+    "oddsOver25": 1.4,
+    "oddsGoal": 2.05,
+    "homeRoster": {
+      "striker": "Mateo Retegui",
+      "winger": "Ademola Lookman",
+      "midfielder": "Charles De Ketelaere",
+      "defender": "Isak Hien",
+      "formation": "3-4-2-1",
+      "coachNote": "Lookman e De Ketelaere a supporto di Retegui capocannoniere."
+    },
+    "awayRoster": {
+      "striker": "João Paulo",
+      "winger": "Élder Santana",
+      "midfielder": "Ofri Arad",
+      "defender": "Aleksandr Martynovich",
+      "formation": "4-4-2",
+      "coachNote": "Squadra kazaka schierata a protezione della propria area."
+    },
+    "tacticalContext": "A Bergamo la Dea impone il proprio ritmo con marcature asfissianti e aggressione alta fin dal primo minuto."
+  },
+  {
+    "id": "sa-ven-udi",
+    "competitionId": "soccer_italy_serie_a",
+    "competitionName": "Serie A",
+    "country": "Italia",
+    "type": "league",
+    "homeTeam": "Venezia",
+    "awayTeam": "Udinese",
+    "kickoffTimeUTC": "2026-11-06T19:45:00Z",
+    "hoursFromNow": 90,
+    "odds1": 2.8,
+    "oddsX": 3.2,
+    "odds2": 2.6,
+    "oddsOver25": 2.05,
+    "oddsGoal": 1.82,
+    "homeRoster": {
+      "striker": "Joel Pohjanpalo",
+      "winger": "Gaetano Oristanio",
+      "midfielder": "Gianluca Busio",
+      "defender": "Jay Idzes",
+      "formation": "3-4-2-1",
+      "coachNote": "Pohjanpalo bomber e idolo del Penzo con l'imprevedibilità di Oristanio."
+    },
+    "awayRoster": {
+      "striker": "Lorenzo Lucca",
+      "winger": "Florian Thauvin",
+      "midfielder": "Jesper Karlström",
+      "defender": "Jaka Bijol",
+      "formation": "3-5-2",
+      "coachNote": "Thauvin capitano e suggeritore per i centimetri di Lucca."
+    },
+    "tacticalContext": "Anticipo del venerdì sera al Penzo: derby del Triveneto combattuto su ogni palla inattiva e grande agonismo."
+  },
+  {
+    "id": "sa-cag-fro",
+    "competitionId": "soccer_italy_serie_a",
+    "competitionName": "Serie A",
+    "country": "Italia",
+    "type": "league",
+    "homeTeam": "Cagliari",
+    "awayTeam": "Frosinone",
+    "kickoffTimeUTC": "2026-11-07T14:00:00Z",
+    "hoursFromNow": 108,
+    "odds1": 2.1,
+    "oddsX": 3.3,
+    "odds2": 3.6,
+    "oddsOver25": 1.95,
+    "oddsGoal": 1.8,
+    "homeRoster": {
+      "striker": "Roberto Piccoli",
+      "winger": "Zito Luvumbo",
+      "midfielder": "Razvan Marin",
+      "defender": "Sebastiano Luperto",
+      "formation": "4-2-3-1",
+      "coachNote": "Luvumbo velocista sulle corsie esterne per servire Piccoli."
+    },
+    "awayRoster": {
+      "striker": "Giuseppe Ambrosino",
+      "winger": "Fares Ghedjemis",
+      "midfielder": "Luca Mazzitelli",
+      "defender": "Ilario Monterisi",
+      "formation": "3-4-2-1",
+      "coachNote": "Mazzitelli geometrie e tiro da fuori a guidare la formazione ciociara."
+    },
+    "tacticalContext": "Punti pesanti per la salvezza alla Domus Arena di Cagliari: grande intensità fisica e duelli aerei."
+  },
+  {
+    "id": "sa-tor-lec",
+    "competitionId": "soccer_italy_serie_a",
+    "competitionName": "Serie A",
+    "country": "Italia",
+    "type": "league",
+    "homeTeam": "Torino",
+    "awayTeam": "Lecce",
+    "kickoffTimeUTC": "2026-11-07T14:00:00Z",
+    "hoursFromNow": 108,
+    "odds1": 1.85,
+    "oddsX": 3.35,
+    "odds2": 4.6,
+    "oddsOver25": 2.1,
+    "oddsGoal": 1.95,
+    "homeRoster": {
+      "striker": "Ché Adams",
+      "winger": "Nikola Vlašić",
+      "midfielder": "Samuele Ricci",
+      "defender": "Saúl Coco",
+      "formation": "3-5-2",
+      "coachNote": "Ché Adams guida l'attacco granata con gli inserimenti di Vlašić e Ricci."
+    },
+    "awayRoster": {
+      "striker": "Nikola Krstović",
+      "winger": "Patrick Dorgu",
+      "midfielder": "Ylber Ramadani",
+      "defender": "Federico Baschirotto",
+      "formation": "4-3-3",
+      "coachNote": "Krstović riferimento avanzato con Dorgu freccia a tutta fascia."
+    },
+    "tacticalContext": "Partita bloccata e tattica all'Olimpico Grande Torino: il Lecce difende compatto, il Toro cerca varchi centrali."
+  },
+  {
+    "id": "sa-par-bol",
+    "competitionId": "soccer_italy_serie_a",
+    "competitionName": "Serie A",
+    "country": "Italia",
+    "type": "league",
+    "homeTeam": "Parma",
+    "awayTeam": "Bologna",
+    "kickoffTimeUTC": "2026-11-07T17:00:00Z",
+    "hoursFromNow": 111,
+    "odds1": 3.1,
+    "oddsX": 3.3,
+    "odds2": 2.35,
+    "oddsOver25": 1.95,
+    "oddsGoal": 1.75,
+    "homeRoster": {
+      "striker": "Ange-Yoan Bonny",
+      "winger": "Dennis Man",
+      "midfielder": "Adrián Bernabé",
+      "defender": "Botond Balogh",
+      "formation": "4-2-3-1",
+      "coachNote": "Dennis Man e Mihăilă ali velocissime con la regia illuminata di Bernabé."
+    },
+    "awayRoster": {
+      "striker": "Santiago Castro",
+      "winger": "Riccardo Orsolini",
+      "midfielder": "Remo Freuler",
+      "defender": "Sam Beukema",
+      "formation": "4-2-3-1",
+      "coachNote": "Orsolini specialista dei piazzati con la grinta di Castro al Tardini."
+    },
+    "tacticalContext": "Derby emiliano con transizioni rapide da ambo le parti e frequenti conclusioni verso la porta."
+  },
+  {
+    "id": "sa-rom-sas",
+    "competitionId": "soccer_italy_serie_a",
+    "competitionName": "Serie A",
+    "country": "Italia",
+    "type": "league",
+    "homeTeam": "AS Roma",
+    "awayTeam": "Sassuolo",
+    "kickoffTimeUTC": "2026-11-07T19:45:00Z",
+    "hoursFromNow": 114,
+    "odds1": 1.55,
+    "oddsX": 4.1,
+    "odds2": 6,
+    "oddsOver25": 1.7,
+    "oddsGoal": 1.78,
+    "homeRoster": {
+      "striker": "Artem Dovbyk",
+      "winger": "Paulo Dybala",
+      "midfielder": "Lorenzo Pellegrini",
+      "defender": "Gianluca Mancini",
+      "formation": "3-4-2-1",
+      "coachNote": "Dovbyk e Dybala confermati dal primo minuto all'Olimpico."
+    },
+    "awayRoster": {
+      "striker": "Armand Laurienté",
+      "winger": "Domenico Berardi",
+      "midfielder": "Daniel Boloca",
+      "defender": "Filippo Romagna",
+      "formation": "4-3-3",
+      "coachNote": "Berardi rientrato a pieno regime pronto a inventare col suo sinistro."
+    },
+    "tacticalContext": "Roma propositiva all'Olimpico; Sassuolo pericoloso se Berardi e Laurienté trovano spazio nell'uno contro uno."
+  },
+  {
+    "id": "sa-nap-laz",
+    "competitionId": "soccer_italy_serie_a",
+    "competitionName": "Serie A",
+    "country": "Italia",
+    "type": "league",
+    "homeTeam": "Napoli",
+    "awayTeam": "Lazio",
+    "kickoffTimeUTC": "2026-11-08T11:30:00Z",
+    "hoursFromNow": 130,
+    "odds1": 1.9,
+    "oddsX": 3.5,
+    "odds2": 4.2,
+    "oddsOver25": 1.85,
+    "oddsGoal": 1.74,
+    "homeRoster": {
+      "striker": "Romelu Lukaku",
+      "winger": "Khvicha Kvaratskhelia",
+      "midfielder": "Scott McTominay",
+      "defender": "Alessandro Buongiorno",
+      "formation": "4-3-3",
+      "coachNote": "Lukaku leader offensivo, McTominay in continuo inserimento sui cross di Di Lorenzo."
+    },
+    "awayRoster": {
+      "striker": "Valentín Castellanos",
+      "winger": "Mattia Zaccagni",
+      "midfielder": "Matteo Guendouzi",
+      "defender": "Mario Gila",
+      "formation": "4-2-3-1",
+      "coachNote": "Zaccagni capitano e rigorista con Castellanos centravanti di movimento."
+    },
+    "tacticalContext": "Lunch match infuocato al Maradona: Napoli solido e compatto con la regia di Lobotka, Lazio pronta alle ripartenze veloci."
+  },
+  {
+    "id": "sa-gen-mil",
+    "competitionId": "soccer_italy_serie_a",
+    "competitionName": "Serie A",
+    "country": "Italia",
+    "type": "league",
+    "homeTeam": "Genoa",
+    "awayTeam": "AC Milan",
+    "kickoffTimeUTC": "2026-11-08T14:00:00Z",
+    "hoursFromNow": 133,
+    "odds1": 4.4,
+    "oddsX": 3.65,
+    "odds2": 1.82,
+    "oddsOver25": 1.88,
+    "oddsGoal": 1.8,
+    "homeRoster": {
+      "striker": "Andrea Pinamonti",
+      "winger": "Morten Frendrup",
+      "midfielder": "Milan Badelj",
+      "defender": "Johan Vásquez",
+      "formation": "3-5-2",
+      "coachNote": "Pinamonti terminale offensivo di peso spinto dalla gradinata Nord di Marassi."
+    },
+    "awayRoster": {
+      "striker": "Álvaro Morata",
+      "winger": "Rafael Leão",
+      "midfielder": "Christian Pulisic",
+      "defender": "Theo Hernández",
+      "formation": "4-2-3-1",
+      "coachNote": "Leão e Theo protagonisti a tutta fascia con Pulisic incursore letale."
+    },
+    "tacticalContext": "Marassi è sempre un campo ostico: Genoa grintoso nei duelli, Milan chiamato a scardinare il bunker con la classe dei singoli."
+  },
+  {
+    "id": "sa-mon-ata",
+    "competitionId": "soccer_italy_serie_a",
+    "competitionName": "Serie A",
+    "country": "Italia",
+    "type": "league",
+    "homeTeam": "Monza",
+    "awayTeam": "Atalanta",
+    "kickoffTimeUTC": "2026-11-08T14:00:00Z",
+    "hoursFromNow": 133,
+    "odds1": 5.2,
+    "oddsX": 4,
+    "odds2": 1.65,
+    "oddsOver25": 1.75,
+    "oddsGoal": 1.75,
+    "homeRoster": {
+      "striker": "Milan Đurić",
+      "winger": "Dany Mota",
+      "midfielder": "Matteo Pessina",
+      "defender": "Pablo Marí",
+      "formation": "3-4-2-1",
+      "coachNote": "Đurić faro aereo per le sponde a rimorchio di Pessina e Mota."
+    },
+    "awayRoster": {
+      "striker": "Mateo Retegui",
+      "winger": "Ademola Lookman",
+      "midfielder": "Éderson",
+      "defender": "Sead Kolašinac",
+      "formation": "3-4-2-1",
+      "coachNote": "Retegui terminale cinico con Lookman in fiducia totale."
+    },
+    "tacticalContext": "Derby lombardo con l'Atalanta che imporrà pressione a tutto campo e frequenti tiri nello specchio."
+  },
+  {
+    "id": "sa-int-com",
+    "competitionId": "soccer_italy_serie_a",
+    "competitionName": "Serie A",
+    "country": "Italia",
+    "type": "league",
+    "homeTeam": "Internazionale",
+    "awayTeam": "Como",
+    "kickoffTimeUTC": "2026-11-08T17:00:00Z",
+    "hoursFromNow": 136,
+    "odds1": 1.35,
+    "oddsX": 5.2,
+    "odds2": 8.5,
+    "oddsOver25": 1.55,
+    "oddsGoal": 1.85,
+    "homeRoster": {
+      "striker": "Lautaro Martínez",
+      "winger": "Marcus Thuram",
+      "midfielder": "Nicolò Barella",
+      "defender": "Alessandro Bastoni",
+      "formation": "3-5-2",
+      "coachNote": "Lautaro Martínez e Thuram dal 1' minuto; Barella motore della mediana a San Siro."
+    },
+    "awayRoster": {
+      "striker": "Patrick Cutrone",
+      "winger": "Gabriel Strefezza",
+      "midfielder": "Nico Paz",
+      "defender": "Alberto Moreno",
+      "formation": "4-2-3-1",
+      "coachNote": "Nico Paz punto di riferimento tecnico, Cutrone ex della sfida motivato al massimo."
+    },
+    "tacticalContext": "San Siro pieno: Inter a caccia dei 3 punti col controllo del gioco, Como propositivo senza paura del possesso palla."
+  },
+  {
+    "id": "sa-fio-juv",
+    "competitionId": "soccer_italy_serie_a",
+    "competitionName": "Serie A",
+    "country": "Italia",
+    "type": "league",
+    "homeTeam": "Fiorentina",
+    "awayTeam": "Juventus",
+    "kickoffTimeUTC": "2026-11-08T19:45:00Z",
+    "hoursFromNow": 139,
+    "odds1": 3.1,
+    "oddsX": 3.25,
+    "odds2": 2.35,
+    "oddsOver25": 1.95,
+    "oddsGoal": 1.78,
+    "homeRoster": {
+      "striker": "Moise Kean",
+      "winger": "Albert Guðmundsson",
+      "midfielder": "Andrea Colpani",
+      "defender": "Pietro Comuzzo",
+      "formation": "4-2-3-1",
+      "coachNote": "Moise Kean ex bianconero affamato di gol con Guðmundsson rifinitore al Franchi."
+    },
+    "awayRoster": {
+      "striker": "Dušan Vlahović",
+      "winger": "Kenan Yıldız",
+      "midfielder": "Teun Koopmeiners",
+      "defender": "Pierre Kalulu",
+      "formation": "4-2-3-1",
+      "coachNote": "Vlahović torna da grande ex a Firenze tra i fischi del Franchi con Yıldız esterno."
+    },
+    "tacticalContext": "Rivalità storica caldissima nel posticipo della domenica: duelli incandescenti, alta tensione e cartellini probabili."
+  },
+  {
+    "id": "epl-eve-cov",
+    "competitionId": "soccer_epl",
+    "competitionName": "Premier League",
+    "country": "Inghilterra",
+    "type": "league",
+    "homeTeam": "Everton",
+    "awayTeam": "Coventry City",
+    "kickoffTimeUTC": "2026-11-06T20:00:00Z",
+    "hoursFromNow": 91,
+    "odds1": 1.72,
+    "oddsX": 3.7,
+    "odds2": 4.8,
+    "oddsOver25": 1.85,
+    "oddsGoal": 1.8,
+    "homeRoster": {
+      "striker": "Dominic Calvert-Lewin",
+      "winger": "Dwight McNeil",
+      "midfielder": "Idrissa Gueye",
+      "defender": "James Tarkowski",
+      "formation": "4-4-1-1",
+      "coachNote": "Goodison Park spinge i Toffees sui calci piazzati battuti da McNeil."
+    },
+    "awayRoster": {
+      "striker": "Ellis Simms",
+      "winger": "Haji Wright",
+      "midfielder": "Ben Sheaf",
+      "defender": "Bobby Thomas",
+      "formation": "3-4-1-2",
+      "coachNote": "Simms grande ex contro la sua ex squadra."
+    },
+    "tacticalContext": "Match fisico al Goodison Park con frequenti duelli aerei."
+  },
+  {
+    "id": "epl-ars-hul",
+    "competitionId": "soccer_epl",
+    "competitionName": "Premier League",
+    "country": "Inghilterra",
+    "type": "league",
+    "homeTeam": "Arsenal",
+    "awayTeam": "Hull City",
+    "kickoffTimeUTC": "2026-11-07T15:00:00Z",
+    "hoursFromNow": 109,
+    "odds1": 1.22,
+    "oddsX": 6.5,
+    "odds2": 12,
+    "oddsOver25": 1.45,
+    "oddsGoal": 2.05,
+    "homeRoster": {
+      "striker": "Kai Havertz",
+      "winger": "Bukayo Saka",
+      "midfielder": "Martin Ødegaard",
+      "defender": "Gabriel Magalhães",
+      "formation": "4-3-3",
+      "coachNote": "Saka e Ødegaard cercheranno di scardinare le linee difensive avversarie all'Emirates."
+    },
+    "awayRoster": {
+      "striker": "João Pedro",
+      "winger": "Kasey Palmer",
+      "midfielder": "Regan Slater",
+      "defender": "Alfie Jones",
+      "formation": "4-4-2",
+      "coachNote": "Assetto compatto per limitare l'attacco dei Gunners."
+    },
+    "tacticalContext": "Monologo territoriale dell'Arsenal con assedio sulla trequarti e numerosi corner."
+  },
+  {
+    "id": "epl-not-mci",
+    "competitionId": "soccer_epl",
+    "competitionName": "Premier League",
+    "country": "Inghilterra",
+    "type": "league",
+    "homeTeam": "Nottingham Forest",
+    "awayTeam": "Manchester City",
+    "kickoffTimeUTC": "2026-11-07T17:30:00Z",
+    "hoursFromNow": 112,
+    "odds1": 6.8,
+    "oddsX": 4.8,
+    "odds2": 1.44,
+    "oddsOver25": 1.55,
+    "oddsGoal": 1.75,
+    "homeRoster": {
+      "striker": "Chris Wood",
+      "winger": "Anthony Elanga",
+      "midfielder": "Morgan Gibbs-White",
+      "defender": "Murillo",
+      "formation": "4-2-3-1",
+      "coachNote": "Wood riferimento aereo con Elanga a colpire in velocità."
+    },
+    "awayRoster": {
+      "striker": "Erling Haaland",
+      "winger": "Savinho",
+      "midfielder": "Phil Foden",
+      "defender": "Rúben Dias",
+      "formation": "4-1-4-1",
+      "coachNote": "Haaland sempre implacabile contro difese bloccate."
+    },
+    "tacticalContext": "City dominante nel controllo palla ma City Ground è sempre una trappola per i contropiedi di Elanga."
+  },
+  {
+    "id": "epl-cry-liv",
+    "competitionId": "soccer_epl",
+    "competitionName": "Premier League",
+    "country": "Inghilterra",
+    "type": "league",
+    "homeTeam": "Crystal Palace",
+    "awayTeam": "Liverpool",
+    "kickoffTimeUTC": "2026-11-08T14:00:00Z",
+    "hoursFromNow": 133,
+    "odds1": 5,
+    "oddsX": 4.2,
+    "odds2": 1.62,
+    "oddsOver25": 1.58,
+    "oddsGoal": 1.65,
+    "homeRoster": {
+      "striker": "Jean-Philippe Mateta",
+      "winger": "Eberechi Eze",
+      "midfielder": "Adam Wharton",
+      "defender": "Marc Guéhi",
+      "formation": "3-4-2-1",
+      "coachNote": "Eze e Mateta punti focali della formazione di Glasner a Selhurst Park."
+    },
+    "awayRoster": {
+      "striker": "Mohamed Salah",
+      "winger": "Luis Díaz",
+      "midfielder": "Alexis Mac Allister",
+      "defender": "Virgil van Dijk",
+      "formation": "4-3-3",
+      "coachNote": "Salah capocannoniere e leader dei Reds."
+    },
+    "tacticalContext": "Partita ad alto ritmo a Selhurst Park: il Palace prova a sorprendere il Liverpool con Eze."
+  },
+  {
+    "id": "epl-mun-asv",
+    "competitionId": "soccer_epl",
+    "competitionName": "Premier League",
+    "country": "Inghilterra",
+    "type": "league",
+    "homeTeam": "Manchester United",
+    "awayTeam": "Aston Villa",
+    "kickoffTimeUTC": "2026-11-08T16:30:00Z",
+    "hoursFromNow": 135,
+    "odds1": 2.15,
+    "oddsX": 3.55,
+    "odds2": 3.2,
+    "oddsOver25": 1.62,
+    "oddsGoal": 1.55,
+    "homeRoster": {
+      "striker": "Rasmus Højlund",
+      "winger": "Alejandro Garnacho",
+      "midfielder": "Bruno Fernandes",
+      "defender": "Lisandro Martínez",
+      "formation": "4-2-3-1",
+      "coachNote": "Bruno Fernandes leader tecnico a Old Trafford con Garnacho a sinistra."
+    },
+    "awayRoster": {
+      "striker": "Ollie Watkins",
+      "winger": "Leon Bailey",
+      "midfielder": "Morgan Rogers",
+      "defender": "Ezri Konsa",
+      "formation": "4-2-3-1",
+      "coachNote": "Watkins spauracchio della difesa dei Red Devils."
+    },
+    "tacticalContext": "Gara di cartello in Premier: ritmi folli, ribaltamenti continui e occasioni da ambo le parti."
+  },
+  {
+    "id": "ll-val-rma",
+    "competitionId": "soccer_spain_la_liga",
+    "competitionName": "La Liga",
+    "country": "Spagna",
+    "type": "league",
+    "homeTeam": "Valencia",
+    "awayTeam": "Real Madrid",
+    "kickoffTimeUTC": "2026-11-07T20:00:00Z",
+    "hoursFromNow": 114,
+    "odds1": 5.5,
+    "oddsX": 4.2,
+    "odds2": 1.58,
+    "oddsOver25": 1.65,
+    "oddsGoal": 1.72,
+    "homeRoster": {
+      "striker": "Hugo Duro",
+      "winger": "Diego López",
+      "midfielder": "Pepelu",
+      "defender": "Cristhian Mosquera",
+      "formation": "4-4-2",
+      "coachNote": "Mestalla carico di passione con Hugo Duro punta di riferimento."
+    },
+    "awayRoster": {
+      "striker": "Kylian Mbappé",
+      "winger": "Vinícius Júnior",
+      "midfielder": "Jude Bellingham",
+      "defender": "Antonio Rüdiger",
+      "formation": "4-3-1-2",
+      "coachNote": "Mbappé e Vinícius pronti alle fiammate su una delle piste più calde della Liga."
+    },
+    "tacticalContext": "Atmosfera rovente al Mestalla: Valencia aggressivo, Real Madrid con qualità superiore nelle ripartenze."
+  },
+  {
+    "id": "ll-atm-bar",
+    "competitionId": "soccer_spain_la_liga",
+    "competitionName": "La Liga",
+    "country": "Spagna",
+    "type": "league",
+    "homeTeam": "Atlético Madrid",
+    "awayTeam": "Barcelona",
+    "kickoffTimeUTC": "2026-11-08T20:00:00Z",
+    "hoursFromNow": 139,
+    "odds1": 2.65,
+    "oddsX": 3.55,
+    "odds2": 2.55,
+    "oddsOver25": 1.6,
+    "oddsGoal": 1.52,
+    "homeRoster": {
+      "striker": "Julián Álvarez",
+      "winger": "Antoine Griezmann",
+      "midfielder": "Rodrigo De Paul",
+      "defender": "José María Giménez",
+      "formation": "4-4-2",
+      "coachNote": "Simeone carica il Metropolitano con Álvarez e Griezmann coppia gol."
+    },
+    "awayRoster": {
+      "striker": "Robert Lewandowski",
+      "winger": "Lamine Yamal",
+      "midfielder": "Pedri",
+      "defender": "Pau Cubarsí",
+      "formation": "4-3-3",
+      "coachNote": "Lewandowski e Lamine Yamal a guidare la capolista con la linea difensiva alta."
+    },
+    "tacticalContext": "Clásico del Metropolitano tra due giganti del calcio spagnolo: intensità fisica estrema e colpi di alta scuola."
+  },
+  {
+    "id": "bl-mai-bay",
+    "competitionId": "soccer_germany_bundesliga",
+    "competitionName": "Bundesliga",
+    "country": "Germania",
+    "type": "league",
+    "homeTeam": "Mainz",
+    "awayTeam": "Bayern Munich",
+    "kickoffTimeUTC": "2026-11-07T14:30:00Z",
+    "hoursFromNow": 108,
+    "odds1": 7.5,
+    "oddsX": 5.5,
+    "odds2": 1.35,
+    "oddsOver25": 1.42,
+    "oddsGoal": 1.68,
+    "homeRoster": {
+      "striker": "Jonathan Burkardt",
+      "winger": "Paul Nebel",
+      "midfielder": "Nadiem Amiri",
+      "defender": "Stefan Bell",
+      "formation": "3-4-2-1",
+      "coachNote": "Burkardt capocannoniere del Mainz insidioso su palle inattive."
+    },
+    "awayRoster": {
+      "striker": "Harry Kane",
+      "winger": "Michael Olise",
+      "midfielder": "Jamal Musiala",
+      "defender": "Dayot Upamecano",
+      "formation": "4-2-3-1",
+      "coachNote": "Harry Kane terminale implacabile con Musiala e Olise trequartisti."
+    },
+    "tacticalContext": "Forcing offensivo del Bayern contro la compattezza del Mainz alla Mewa Arena."
   }
 ];
 
@@ -1586,6 +2090,7 @@ export function getStaticCompetitions(timeWindow: TimeWindowKey = 'hours48'): {
   calendarUpdatedTimestamp: string;
   timeWindow: TimeWindowKey;
 } {
+  const now = Date.now();
   const maxHours =
     timeWindow === 'today'
       ? 26
@@ -1595,7 +2100,10 @@ export function getStaticCompetitions(timeWindow: TimeWindowKey = 'hours48'): {
       ? 168
       : 336;
 
-  const matchesInWindow = STATIC_MATCHES.filter((m) => m.hoursFromNow <= maxHours);
+  const matchesInWindow = STATIC_MATCHES.filter((m) => {
+    const h = getMatchHoursFromNow(m, now);
+    return h <= maxHours;
+  });
   const effective = matchesInWindow.length >= 4 ? matchesInWindow : STATIC_MATCHES;
 
   const compMap = new Map<
@@ -1677,7 +2185,10 @@ export function runStaticPagesAnalysis(params: {
 
   const feasibility = checkClientFeasibility(params.targetOdds, params.riskLevel, params.betType);
 
-  const matchesInWindow = STATIC_MATCHES.filter((m) => m.hoursFromNow <= maxHours);
+  const matchesInWindow = STATIC_MATCHES.filter((m) => {
+    const h = getMatchHoursFromNow(m, now);
+    return h <= maxHours;
+  });
   let effectiveMatches = matchesInWindow.length >= 4 ? matchesInWindow : STATIC_MATCHES;
 
   if (params.competitions && params.competitions.length > 0) {
@@ -1713,7 +2224,7 @@ export function runStaticPagesAnalysis(params: {
 
   let allSelections: CandidateSelection[] = [];
   for (const m of effectiveMatches) {
-    const commenceTime = new Date(now + m.hoursFromNow * hourMs).toISOString();
+    const commenceTime = getMatchCommenceTime(m, now);
     const matchSels = generateSelectionsForMatch(m, commenceTime);
     allSelections.push(...matchSels);
   }
