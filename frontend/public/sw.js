@@ -1,4 +1,4 @@
-const CACHE_NAME = 'samu-bet-pwa-v4';
+const CACHE_NAME = 'samu-bet-pwa-v5';
 const STATIC_ASSETS = [
   './',
   './index.html',

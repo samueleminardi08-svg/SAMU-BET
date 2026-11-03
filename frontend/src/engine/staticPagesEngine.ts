@@ -2159,19 +2159,22 @@ export function getStaticCompetitions(timeWindow: TimeWindowKey = 'hours48'): {
   };
 }
 
-export function runStaticPagesAnalysis(params: {
-  betType: BetTypeKey;
-  sports: SportKey[];
-  allowMultiSportExpansion?: boolean;
-  targetOdds: number;
-  riskLevel: number;
-  timeWindow: TimeWindowKey;
-  allowedMarketGroups?: MarketGroupKey[];
-  competitions?: string[];
-  diversityMode?: string;
-  maxSameMarketSelection?: number;
-  snaiRealOddsOverrides?: Record<string, number>;
-}): AnalyzeApiResponse {
+export function runStaticPagesAnalysis(
+  params: {
+    betType: BetTypeKey;
+    sports: SportKey[];
+    allowMultiSportExpansion?: boolean;
+    targetOdds: number;
+    riskLevel: number;
+    timeWindow: TimeWindowKey;
+    allowedMarketGroups?: MarketGroupKey[];
+    competitions?: string[];
+    diversityMode?: string;
+    maxSameMarketSelection?: number;
+    snaiRealOddsOverrides?: Record<string, number>;
+  },
+  customMatches?: StaticMatchBlueprint[]
+): AnalyzeApiResponse {
   const now = Date.now();
   const hourMs = 3600 * 1000;
   const maxHours =
@@ -2184,12 +2187,13 @@ export function runStaticPagesAnalysis(params: {
       : 336;
 
   const feasibility = checkClientFeasibility(params.targetOdds, params.riskLevel, params.betType);
+  const sourceMatches = customMatches && customMatches.length >= 4 ? customMatches : STATIC_MATCHES;
 
-  const matchesInWindow = STATIC_MATCHES.filter((m) => {
+  const matchesInWindow = sourceMatches.filter((m) => {
     const h = getMatchHoursFromNow(m, now);
     return h <= maxHours;
   });
-  let effectiveMatches = matchesInWindow.length >= 4 ? matchesInWindow : STATIC_MATCHES;
+  let effectiveMatches = matchesInWindow.length >= 4 ? matchesInWindow : sourceMatches;
 
   if (params.competitions && params.competitions.length > 0) {
     if (params.competitions.includes('__none__')) {

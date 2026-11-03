@@ -1,0 +1,51 @@
+name: Auto Update Weekly Fixtures
+
+on:
+  schedule:
+    # Lunedì notte alle 02:00 UTC (prepara le coppe europee infrasettimanali)
+    - cron: '0 2 * * 1'
+    # Giovedì notte alle 02:00 UTC (prepara il weekend di Serie A e campionati)
+    - cron: '0 2 * * 4'
+  workflow_dispatch: # Permette di avviare l'aggiornamento manualmente dalla dashboard di GitHub Actions
+
+permissions:
+  contents: write
+
+jobs:
+  update-fixtures:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci || npm install
+
+      - name: Sync Live Fixtures from ESPN
+        run: node scripts/syncWeeklyFixtures.js
+
+      - name: Build Frontend
+        run: npm --prefix frontend run build
+
+      - name: Deploy to Root for GitHub Pages
+        run: |
+          rm -rf assets/*
+          cp -r frontend/dist/* .
+
+      - name: Commit and Push Changes
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add assets/ index.html manifest.json sw.js frontend/src/engine/staticPagesEngine.ts
+          if git diff --staged --quiet; then
+            echo "Nessun nuovo match o modifica rilevata. Calendario già aggiornato."
+          else
+            git commit -m "chore(auto): aggiornamento automatico calendario settimanale [skip ci]"
+            git push
+          fi

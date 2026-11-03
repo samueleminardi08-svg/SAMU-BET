@@ -76,6 +76,10 @@ import {
   getStaticCompetitions,
   runStaticPagesAnalysis
 } from '../engine/staticPagesEngine';
+import {
+  getLiveOrStaticCompetitions,
+  runLivePagesAnalysis
+} from './liveFixturesService';
 
 export async function fetchBackendStatus(): Promise<BackendStatusResponse | null> {
   try {
@@ -107,7 +111,7 @@ export async function fetchCompetitions(timeWindow: TimeWindowKey = 'hours48'): 
   } catch {
     // fallback se backend non risponde
   }
-  return getStaticCompetitions(timeWindow);
+  return getLiveOrStaticCompetitions(timeWindow);
 }
 
 export async function runBackendAnalysis(params: {
@@ -132,7 +136,7 @@ export async function runBackendAnalysis(params: {
 
     const contentType = res.headers.get('content-type') || '';
     if (res.status === 404 || res.status === 405 || !contentType.includes('application/json')) {
-      return runStaticPagesAnalysis(params);
+      return await runLivePagesAnalysis(params);
     }
 
     const data = await res.json();
@@ -141,7 +145,7 @@ export async function runBackendAnalysis(params: {
     }
     return data as AnalyzeApiResponse;
   } catch (err) {
-    // Se siamo su GitHub Pages o senza server Node attivo, usa il motore autonomo integrato
-    return runStaticPagesAnalysis(params);
+    // Se siamo su GitHub Pages o senza server Node attivo, usa il motore autonomo live integrato
+    return await runLivePagesAnalysis(params);
   }
 }
