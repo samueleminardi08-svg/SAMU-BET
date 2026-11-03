@@ -1,6 +1,8 @@
 import {
   BetTypeKey,
   CandidateSelection,
+  CompetitionItem,
+  CompetitionType,
   DEFAULT_TARGET_TOLERANCE,
   FeasibilityCheckResult,
   MAX_MULTIPLE_EVENTS,
@@ -24,7 +26,10 @@ interface StaticTeamRoster {
 
 interface StaticMatchBlueprint {
   id: string;
+  competitionId: string;
   competitionName: string;
+  country: string;
+  type: CompetitionType;
   homeTeam: string;
   awayTeam: string;
   hoursFromNow: number;
@@ -39,9 +44,13 @@ interface StaticMatchBlueprint {
 }
 
 const STATIC_MATCHES: StaticMatchBlueprint[] = [
+  // --- 1. CAMPIONATI (SERIE A, PREMIER, LA LIGA, BUNDESLIGA, LIGUE 1, SERIE B) ---
   {
     id: 'sa-int-nap',
-    competitionName: 'Serie A (Italia)',
+    competitionId: 'soccer_italy_serie_a',
+    competitionName: 'Serie A',
+    country: 'Italia',
+    type: 'league',
     homeTeam: 'Inter',
     awayTeam: 'Napoli',
     hoursFromNow: 4,
@@ -70,7 +79,10 @@ const STATIC_MATCHES: StaticMatchBlueprint[] = [
   },
   {
     id: 'sa-juv-mil',
-    competitionName: 'Serie A (Italia)',
+    competitionId: 'soccer_italy_serie_a',
+    competitionName: 'Serie A',
+    country: 'Italia',
+    type: 'league',
     homeTeam: 'Juventus',
     awayTeam: 'Milan',
     hoursFromNow: 7,
@@ -99,7 +111,10 @@ const STATIC_MATCHES: StaticMatchBlueprint[] = [
   },
   {
     id: 'sa-ata-rom',
-    competitionName: 'Serie A (Italia)',
+    competitionId: 'soccer_italy_serie_a',
+    competitionName: 'Serie A',
+    country: 'Italia',
+    type: 'league',
     homeTeam: 'Atalanta',
     awayTeam: 'Roma',
     hoursFromNow: 10,
@@ -128,7 +143,10 @@ const STATIC_MATCHES: StaticMatchBlueprint[] = [
   },
   {
     id: 'sa-fio-laz',
-    competitionName: 'Serie A (Italia)',
+    competitionId: 'soccer_italy_serie_a',
+    competitionName: 'Serie A',
+    country: 'Italia',
+    type: 'league',
     homeTeam: 'Fiorentina',
     awayTeam: 'Lazio',
     hoursFromNow: 15,
@@ -157,7 +175,10 @@ const STATIC_MATCHES: StaticMatchBlueprint[] = [
   },
   {
     id: 'epl-ars-liv',
-    competitionName: 'Premier League (Inghilterra)',
+    competitionId: 'soccer_epl',
+    competitionName: 'Premier League',
+    country: 'Inghilterra',
+    type: 'league',
     homeTeam: 'Arsenal',
     awayTeam: 'Liverpool',
     hoursFromNow: 19,
@@ -186,7 +207,10 @@ const STATIC_MATCHES: StaticMatchBlueprint[] = [
   },
   {
     id: 'epl-mci-che',
-    competitionName: 'Premier League (Inghilterra)',
+    competitionId: 'soccer_epl',
+    competitionName: 'Premier League',
+    country: 'Inghilterra',
+    type: 'league',
     homeTeam: 'Manchester City',
     awayTeam: 'Chelsea',
     hoursFromNow: 22,
@@ -215,7 +239,10 @@ const STATIC_MATCHES: StaticMatchBlueprint[] = [
   },
   {
     id: 'll-rma-bar',
-    competitionName: 'La Liga (Spagna)',
+    competitionId: 'soccer_spain_la_liga',
+    competitionName: 'La Liga',
+    country: 'Spagna',
+    type: 'league',
     homeTeam: 'Real Madrid',
     awayTeam: 'Barcelona',
     hoursFromNow: 27,
@@ -244,7 +271,10 @@ const STATIC_MATCHES: StaticMatchBlueprint[] = [
   },
   {
     id: 'bl-bay-bvb',
-    competitionName: 'Bundesliga (Germania)',
+    competitionId: 'soccer_germany_bundesliga',
+    competitionName: 'Bundesliga',
+    country: 'Germania',
+    type: 'league',
     homeTeam: 'Bayern Munich',
     awayTeam: 'Borussia Dortmund',
     hoursFromNow: 31,
@@ -273,7 +303,10 @@ const STATIC_MATCHES: StaticMatchBlueprint[] = [
   },
   {
     id: 'sa-bol-tor',
-    competitionName: 'Serie A (Italia)',
+    competitionId: 'soccer_italy_serie_a',
+    competitionName: 'Serie A',
+    country: 'Italia',
+    type: 'league',
     homeTeam: 'Bologna',
     awayTeam: 'Torino',
     hoursFromNow: 36,
@@ -302,7 +335,10 @@ const STATIC_MATCHES: StaticMatchBlueprint[] = [
   },
   {
     id: 'fl1-psg-mon',
-    competitionName: 'Ligue 1 (Francia)',
+    competitionId: 'soccer_france_ligue_one',
+    competitionName: 'Ligue 1',
+    country: 'Francia',
+    type: 'league',
     homeTeam: 'PSG',
     awayTeam: 'Monaco',
     hoursFromNow: 42,
@@ -330,8 +366,43 @@ const STATIC_MATCHES: StaticMatchBlueprint[] = [
     tacticalContext: 'Alto volume di gioco offensivo e numerosi calci d\'angolo sviluppati sulle catene laterali.'
   },
   {
+    id: 'sb-pal-sam',
+    competitionId: 'soccer_italy_serie_b',
+    competitionName: 'Serie B',
+    country: 'Italia',
+    type: 'league',
+    homeTeam: 'Palermo',
+    awayTeam: 'Sampdoria',
+    hoursFromNow: 46,
+    odds1: 2.15,
+    oddsX: 3.15,
+    odds2: 3.50,
+    oddsOver25: 2.05,
+    oddsGoal: 1.88,
+    homeRoster: {
+      striker: 'Matteo Brunori',
+      winger: 'Roberto Insigne',
+      midfielder: 'Jacopo Segre',
+      defender: 'Pietro Ceccaroni',
+      formation: '4-3-3',
+      coachNote: 'Brunori punto di riferimento offensivo e rigorista primario.'
+    },
+    awayRoster: {
+      striker: 'Massimo Coda',
+      winger: 'Gennaro Tutino',
+      midfielder: 'Gerard Yepes',
+      defender: 'Simone Romagnoli',
+      formation: '3-5-2',
+      coachNote: 'Coppia Coda - Tutino con grande pericolosità in area avversaria.'
+    },
+    tacticalContext: 'Partita di cartello in Serie B con duelli fisici e grande incidenza delle palle inattive.'
+  },
+  {
     id: 'll-atm-vil',
-    competitionName: 'La Liga (Spagna)',
+    competitionId: 'soccer_spain_la_liga',
+    competitionName: 'La Liga',
+    country: 'Spagna',
+    type: 'league',
     homeTeam: 'Atlético Madrid',
     awayTeam: 'Villarreal',
     hoursFromNow: 54,
@@ -360,7 +431,10 @@ const STATIC_MATCHES: StaticMatchBlueprint[] = [
   },
   {
     id: 'bl-lev-rbl',
-    competitionName: 'Bundesliga (Germania)',
+    competitionId: 'soccer_germany_bundesliga',
+    competitionName: 'Bundesliga',
+    country: 'Germania',
+    type: 'league',
     homeTeam: 'Bayer Leverkusen',
     awayTeam: 'RB Leipzig',
     hoursFromNow: 68,
@@ -386,6 +460,426 @@ const STATIC_MATCHES: StaticMatchBlueprint[] = [
       coachNote: 'Openda e Šeško in attacco innescati in verticale da Xavi Simons.'
     },
     tacticalContext: 'Sfida spettacolare tra due squadre ad altissima produzione di tiri in porta.'
+  },
+
+  // --- 2. COPPE (CHAMPIONS LEAGUE, COPPA ITALIA, EUROPA LEAGUE, CONFERENCE LEAGUE, FA CUP, COPA DEL REY) ---
+  {
+    id: 'ucl-rma-mci',
+    competitionId: 'soccer_uefa_champs_league',
+    competitionName: 'UEFA Champions League',
+    country: 'Europa',
+    type: 'cup',
+    homeTeam: 'Real Madrid',
+    awayTeam: 'Manchester City',
+    hoursFromNow: 8,
+    odds1: 2.30,
+    oddsX: 3.50,
+    odds2: 2.95,
+    oddsOver25: 1.55,
+    oddsGoal: 1.48,
+    homeRoster: {
+      striker: 'Kylian Mbappé',
+      winger: 'Vinícius Júnior',
+      midfielder: 'Jude Bellingham',
+      defender: 'Antonio Rüdiger',
+      formation: '4-3-3',
+      coachNote: 'Mbappé e Vinícius pronti alle ripartenze; Bellingham incursore centrale.'
+    },
+    awayRoster: {
+      striker: 'Erling Haaland',
+      winger: 'Savinho',
+      midfielder: 'Kevin De Bruyne',
+      defender: 'Rúben Dias',
+      formation: '4-3-3',
+      coachNote: 'De Bruyne ispiratore per Haaland; City focalizzato sul possesso avanzato.'
+    },
+    tacticalContext: 'Scontro stellare ai vertici del calcio europeo con altissima intensità e occasioni da rete.'
+  },
+  {
+    id: 'ucl-int-ars',
+    competitionId: 'soccer_uefa_champs_league',
+    competitionName: 'UEFA Champions League',
+    country: 'Europa',
+    type: 'cup',
+    homeTeam: 'Inter',
+    awayTeam: 'Arsenal',
+    hoursFromNow: 14,
+    odds1: 2.45,
+    oddsX: 3.25,
+    odds2: 2.90,
+    oddsOver25: 1.85,
+    oddsGoal: 1.70,
+    homeRoster: {
+      striker: 'Lautaro Martínez',
+      winger: 'Marcus Thuram',
+      midfielder: 'Hakan Çalhanoğlu',
+      defender: 'Alessandro Bastoni',
+      formation: '3-5-2',
+      coachNote: 'Lautaro Martínez capitano e trascinatore; Çalhanoğlu metronomo del centrocampo.'
+    },
+    awayRoster: {
+      striker: 'Kai Havertz',
+      winger: 'Bukayo Saka',
+      midfielder: 'Martin Ødegaard',
+      defender: 'William Saliba',
+      formation: '4-3-3',
+      coachNote: 'Saka stella a destra; Arsenal molto pericoloso sui calci piazzati.'
+    },
+    tacticalContext: 'Organizzazione difensiva di altissimo livello contro il pressing asfissiante dei Gunners.'
+  },
+  {
+    id: 'ci-juv-laz',
+    competitionId: 'soccer_italy_coppa_italia',
+    competitionName: 'Coppa Italia',
+    country: 'Italia',
+    type: 'cup',
+    homeTeam: 'Juventus',
+    awayTeam: 'Lazio',
+    hoursFromNow: 18,
+    odds1: 1.88,
+    oddsX: 3.40,
+    odds2: 4.30,
+    oddsOver25: 1.95,
+    oddsGoal: 1.85,
+    homeRoster: {
+      striker: 'Dušan Vlahović',
+      winger: 'Kenan Yıldız',
+      midfielder: 'Teun Koopmeiners',
+      defender: 'Federico Gatti',
+      formation: '4-2-3-1',
+      coachNote: 'Vlahović titolare in coppa con Yıldız e Koopmeiners sulla trequarti.'
+    },
+    awayRoster: {
+      striker: 'Valentín Castellanos',
+      winger: 'Mattia Zaccagni',
+      midfielder: 'Matteo Guendouzi',
+      defender: 'Alessio Romagnoli',
+      formation: '4-2-3-1',
+      coachNote: 'Castellanos riferimento d\'attacco; Zaccagni capitano e tiratore dal dischetto.'
+    },
+    tacticalContext: 'Gara a eliminazione diretta di Coppa Italia con massima attenzione e ritmi controllati.'
+  },
+  {
+    id: 'uel-rom-ath',
+    competitionId: 'soccer_uefa_europa_league',
+    competitionName: 'UEFA Europa League',
+    country: 'Europa',
+    type: 'cup',
+    homeTeam: 'Roma',
+    awayTeam: 'Athletic Bilbao',
+    hoursFromNow: 20,
+    odds1: 2.05,
+    oddsX: 3.35,
+    odds2: 3.65,
+    oddsOver25: 1.80,
+    oddsGoal: 1.72,
+    homeRoster: {
+      striker: 'Artem Dovbyk',
+      winger: 'Paulo Dybala',
+      midfielder: 'Lorenzo Pellegrini',
+      defender: 'Gianluca Mancini',
+      formation: '3-4-2-1',
+      coachNote: 'Dovbyk terminale offensivo con la classe di Dybala a ridosso dell\'area.'
+    },
+    awayRoster: {
+      striker: 'Gorka Guruzeta',
+      winger: 'Nico Williams',
+      midfielder: 'Oihan Sancet',
+      defender: 'Dani Vivian',
+      formation: '4-2-3-1',
+      coachNote: 'Nico Williams pericolo costante sulla sinistra; Sancet incursore.'
+    },
+    tacticalContext: 'Notte europea all\'Olimpico: giallorossi decisi a sfruttare il fattore campo contro la velocità basca.'
+  },
+  {
+    id: 'ci-mil-ata',
+    competitionId: 'soccer_italy_coppa_italia',
+    competitionName: 'Coppa Italia',
+    country: 'Italia',
+    type: 'cup',
+    homeTeam: 'Milan',
+    awayTeam: 'Atalanta',
+    hoursFromNow: 25,
+    odds1: 2.15,
+    oddsX: 3.45,
+    odds2: 3.30,
+    oddsOver25: 1.72,
+    oddsGoal: 1.62,
+    homeRoster: {
+      striker: 'Álvaro Morata',
+      winger: 'Rafael Leão',
+      midfielder: 'Christian Pulisic',
+      defender: 'Fikayo Tomori',
+      formation: '4-2-3-1',
+      coachNote: 'Leão e Pulisic sugli esterni con Morata al centro dell\'attacco rossonero.'
+    },
+    awayRoster: {
+      striker: 'Mateo Retegui',
+      winger: 'Ademola Lookman',
+      midfielder: 'Charles De Ketelaere',
+      defender: 'Sead Kolašinac',
+      formation: '3-4-2-1',
+      coachNote: 'De Ketelaere da ex a San Siro con Retegui e Lookman in forma smagliante.'
+    },
+    tacticalContext: 'Quarto di finale di Coppa Italia spettacolare e ricco di ribaltamenti di fronte.'
+  },
+  {
+    id: 'uecl-fio-bet',
+    competitionId: 'soccer_uefa_conference_league',
+    competitionName: 'UEFA Conference League',
+    country: 'Europa',
+    type: 'cup',
+    homeTeam: 'Fiorentina',
+    awayTeam: 'Real Betis',
+    hoursFromNow: 28,
+    odds1: 2.10,
+    oddsX: 3.30,
+    odds2: 3.50,
+    oddsOver25: 1.85,
+    oddsGoal: 1.70,
+    homeRoster: {
+      striker: 'Moise Kean',
+      winger: 'Albert Guðmundsson',
+      midfielder: 'Andrea Colpani',
+      defender: 'Luca Ranieri',
+      formation: '4-2-3-1',
+      coachNote: 'Kean trascinatore offensivo della viola nelle notti di Conference League.'
+    },
+    awayRoster: {
+      striker: 'Vitor Roque',
+      winger: 'Giovani Lo Celso',
+      midfielder: 'Pablo Fornals',
+      defender: 'Marc Bartra',
+      formation: '4-2-3-1',
+      coachNote: 'Vitor Roque punta rapida, Lo Celso cervello e uomo dell\'ultimo passaggio per gli spagnoli.'
+    },
+    tacticalContext: 'Ritmo e pressione viola sulle fasce contro il palleggio e la tecnica iberica del Betis.'
+  },
+  {
+    id: 'ucl-bar-bay',
+    competitionId: 'soccer_uefa_champs_league',
+    competitionName: 'UEFA Champions League',
+    country: 'Europa',
+    type: 'cup',
+    homeTeam: 'Barcelona',
+    awayTeam: 'Bayern Munich',
+    hoursFromNow: 32,
+    odds1: 2.35,
+    oddsX: 3.70,
+    odds2: 2.75,
+    oddsOver25: 1.40,
+    oddsGoal: 1.42,
+    homeRoster: {
+      striker: 'Robert Lewandowski',
+      winger: 'Lamine Yamal',
+      midfielder: 'Raphinha',
+      defender: 'Jules Koundé',
+      formation: '4-3-3',
+      coachNote: 'Lamine Yamal e Raphinha inarrestabili sugli esterni a servizio di Lewandowski.'
+    },
+    awayRoster: {
+      striker: 'Harry Kane',
+      winger: 'Michael Olise',
+      midfielder: 'Jamal Musiala',
+      defender: 'Joshua Kimmich',
+      formation: '4-2-3-1',
+      coachNote: 'Harry Kane e Musiala formano una delle coppie offensive più prolifiche d\'Europa.'
+    },
+    tacticalContext: 'Partita di cartello assoluto con due squadre che attaccano ad oltranza.'
+  },
+  {
+    id: 'ucl-liv-psg',
+    competitionId: 'soccer_uefa_champs_league',
+    competitionName: 'UEFA Champions League',
+    country: 'Europa',
+    type: 'cup',
+    homeTeam: 'Liverpool',
+    awayTeam: 'PSG',
+    hoursFromNow: 38,
+    odds1: 1.95,
+    oddsX: 3.75,
+    odds2: 3.60,
+    oddsOver25: 1.50,
+    oddsGoal: 1.48,
+    homeRoster: {
+      striker: 'Darwin Núñez',
+      winger: 'Mohamed Salah',
+      midfielder: 'Alexis Mac Allister',
+      defender: 'Virgil van Dijk',
+      formation: '4-3-3',
+      coachNote: 'Salah immancabile a destra ad Anfield con Luis Díaz e Mac Allister.'
+    },
+    awayRoster: {
+      striker: 'Ousmane Dembélé',
+      winger: 'Bradley Barcola',
+      midfielder: 'Vitinha',
+      defender: 'Marquinhos',
+      formation: '4-3-3',
+      coachNote: 'Velocità pura sulle fasce con Dembélé e Barcola per scardinare la difesa dei Reds.'
+    },
+    tacticalContext: 'Transizioni fulminee e intensità da Premier League contro la qualità tecnica dei parigini.'
+  },
+  {
+    id: 'fac-che-new',
+    competitionId: 'soccer_fa_cup',
+    competitionName: 'FA Cup',
+    country: 'Inghilterra',
+    type: 'cup',
+    homeTeam: 'Chelsea',
+    awayTeam: 'Newcastle',
+    hoursFromNow: 44,
+    odds1: 2.00,
+    oddsX: 3.55,
+    odds2: 3.50,
+    oddsOver25: 1.62,
+    oddsGoal: 1.55,
+    homeRoster: {
+      striker: 'Nicolas Jackson',
+      winger: 'Cole Palmer',
+      midfielder: 'Moises Caicedo',
+      defender: 'Levi Colwill',
+      formation: '4-2-3-1',
+      coachNote: 'Cole Palmer protagonista designato sui tiri e sui calci di rigore per i Blues.'
+    },
+    awayRoster: {
+      striker: 'Alexander Isak',
+      winger: 'Anthony Gordon',
+      midfielder: 'Bruno Guimarães',
+      defender: 'Fabian Schär',
+      formation: '4-3-3',
+      coachNote: 'Isak punta rapida e fredda sotto porta, Gordon devastante negli spazi aperti.'
+    },
+    tacticalContext: 'Sfida a eliminazione diretta di FA Cup giocata a ritmi infernali da entrambi i lati.'
+  },
+  {
+    id: 'cdr-ath-sev',
+    competitionId: 'soccer_spain_copa_del_rey',
+    competitionName: 'Copa del Rey',
+    country: 'Spagna',
+    type: 'cup',
+    homeTeam: 'Athletic Bilbao',
+    awayTeam: 'Sevilla',
+    hoursFromNow: 50,
+    odds1: 1.80,
+    oddsX: 3.50,
+    odds2: 4.50,
+    oddsOver25: 1.90,
+    oddsGoal: 1.82,
+    homeRoster: {
+      striker: 'Iñaki Williams',
+      winger: 'Nico Williams',
+      midfielder: 'Oihan Sancet',
+      defender: 'Yeray Álvarez',
+      formation: '4-2-3-1',
+      coachNote: 'I fratelli Williams titolari insieme a San Mamés per trascinare il Bilbao.'
+    },
+    awayRoster: {
+      striker: 'Isaac Romero',
+      winger: 'Dodi Lukebakio',
+      midfielder: 'Saúl Ñíguez',
+      defender: 'Loïc Badé',
+      formation: '4-3-3',
+      coachNote: 'Lukebakio e Romero incaricati delle ripartenze veloci per gli andalusi.'
+    },
+    tacticalContext: 'San Mamés è un catino infuocato in Copa del Rey, con forte spinta sulle corsie esterne.'
+  },
+
+  // --- 3. ALTRO (UEFA NATIONS LEAGUE, QUALIFICAZIONI MONDIALI) ---
+  {
+    id: 'unl-ita-fra',
+    competitionId: 'soccer_uefa_nations_league',
+    competitionName: 'UEFA Nations League',
+    country: 'Europa',
+    type: 'other',
+    homeTeam: 'Italia',
+    awayTeam: 'Francia',
+    hoursFromNow: 40,
+    odds1: 2.75,
+    oddsX: 3.15,
+    odds2: 2.65,
+    oddsOver25: 1.95,
+    oddsGoal: 1.80,
+    homeRoster: {
+      striker: 'Mateo Retegui',
+      winger: 'Federico Dimarco',
+      midfielder: 'Nicolò Barella',
+      defender: 'Alessandro Bastoni',
+      formation: '3-5-1-1',
+      coachNote: 'Retegui terminale offensivo, Barella e Tonali a dominare la mediana azzurra.'
+    },
+    awayRoster: {
+      striker: 'Marcus Thuram',
+      winger: 'Bradley Barcola',
+      midfielder: 'Eduardo Camavinga',
+      defender: 'William Saliba',
+      formation: '4-3-3',
+      coachNote: 'Thuram prima punta dei Bleus con la qualità e la velocità di Barcola e Nkunku.'
+    },
+    tacticalContext: 'Grande classica internazionale con altissimo tasso tecnico ed equilibrio tattico.'
+  },
+  {
+    id: 'unl-ger-ola',
+    competitionId: 'soccer_uefa_nations_league',
+    competitionName: 'UEFA Nations League',
+    country: 'Europa',
+    type: 'other',
+    homeTeam: 'Germania',
+    awayTeam: 'Olanda',
+    hoursFromNow: 62,
+    odds1: 1.92,
+    oddsX: 3.65,
+    odds2: 3.75,
+    oddsOver25: 1.58,
+    oddsGoal: 1.52,
+    homeRoster: {
+      striker: 'Kai Havertz',
+      winger: 'Florian Wirtz',
+      midfielder: 'Jamal Musiala',
+      defender: 'Antonio Rüdiger',
+      formation: '4-2-3-1',
+      coachNote: 'Wirtz e Musiala gemelli del gol a sostegno di Havertz.'
+    },
+    awayRoster: {
+      striker: 'Cody Gakpo',
+      winger: 'Xavi Simons',
+      midfielder: 'Tijjani Reijnders',
+      defender: 'Virgil van Dijk',
+      formation: '4-3-3',
+      coachNote: 'Gakpo e Simons punti fermi del tridente oranje; Reijnders incursore.'
+    },
+    tacticalContext: 'Tradizionale derby europeo ricco di gol e ribaltamenti continui.'
+  },
+  {
+    id: 'wcq-ing-bel',
+    competitionId: 'soccer_fifa_world_cup_qualifiers_europe',
+    competitionName: 'Qualificazioni Mondiali (Europa)',
+    country: 'Europa',
+    type: 'other',
+    homeTeam: 'Inghilterra',
+    awayTeam: 'Belgio',
+    hoursFromNow: 80,
+    odds1: 1.70,
+    oddsX: 3.75,
+    odds2: 4.80,
+    oddsOver25: 1.75,
+    oddsGoal: 1.75,
+    homeRoster: {
+      striker: 'Harry Kane',
+      winger: 'Bukayo Saka',
+      midfielder: 'Jude Bellingham',
+      defender: 'John Stones',
+      formation: '4-2-3-1',
+      coachNote: 'Kane capitano e leader, Bellingham incursore alle sue spalle.'
+    },
+    awayRoster: {
+      striker: 'Romelu Lukaku',
+      winger: 'Jérémy Doku',
+      midfielder: 'Kevin De Bruyne',
+      defender: 'Wout Faes',
+      formation: '4-3-3',
+      coachNote: 'De Bruyne e Doku cercheranno di innescare la fisicità di Lukaku a Wembley.'
+    },
+    tacticalContext: 'Sfida decisiva per le qualificazioni mondiali tra due corazzate europee.'
   }
 ];
 
@@ -1070,6 +1564,93 @@ export function getStaticBackendStatus(): BackendStatusResponse {
   };
 }
 
+function formatRomeDate(date: Date): string {
+  try {
+    return (
+      new Intl.DateTimeFormat('it-IT', {
+        timeZone: 'Europe/Rome',
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      }).format(date) + ' (fuso Roma)'
+    );
+  } catch {
+    return date.toLocaleDateString('it-IT') + ' (fuso Roma)';
+  }
+}
+
+export function getStaticCompetitions(timeWindow: TimeWindowKey = 'hours48'): {
+  competitions: CompetitionItem[];
+  calendarUpdatedTimestamp: string;
+  timeWindow: TimeWindowKey;
+} {
+  const maxHours =
+    timeWindow === 'today'
+      ? 26
+      : timeWindow === 'hours48'
+      ? 48
+      : timeWindow === 'days7'
+      ? 168
+      : 336;
+
+  const matchesInWindow = STATIC_MATCHES.filter((m) => m.hoursFromNow <= maxHours);
+  const effective = matchesInWindow.length >= 4 ? matchesInWindow : STATIC_MATCHES;
+
+  const compMap = new Map<
+    string,
+    {
+      id: string;
+      name: string;
+      country: string;
+      type: CompetitionType;
+      count: number;
+    }
+  >();
+
+  for (const m of effective) {
+    const existing = compMap.get(m.competitionId);
+    if (existing) {
+      existing.count++;
+    } else {
+      compMap.set(m.competitionId, {
+        id: m.competitionId,
+        name: m.competitionName,
+        country: m.country,
+        type: m.type,
+        count: 1
+      });
+    }
+  }
+
+  const competitions: CompetitionItem[] = Array.from(compMap.values())
+    .map((c) => ({
+      id: c.id,
+      name: c.name,
+      country: c.country,
+      type: c.type,
+      eventsCount: c.count,
+      sport: 'football' as const
+    }))
+    .sort((a, b) => {
+      // Priorità a Italia
+      if (a.country === 'Italia' && b.country !== 'Italia') return -1;
+      if (b.country === 'Italia' && a.country !== 'Italia') return 1;
+      // Priorità a Coppe Europee
+      if (a.country === 'Europa' && b.country !== 'Europa' && b.country !== 'Italia') return -1;
+      if (b.country === 'Europa' && a.country !== 'Europa' && a.country !== 'Italia') return 1;
+      if (b.eventsCount !== a.eventsCount) return b.eventsCount - a.eventsCount;
+      return a.name.localeCompare(b.name);
+    });
+
+  return {
+    competitions,
+    calendarUpdatedTimestamp: formatRomeDate(new Date()),
+    timeWindow
+  };
+}
+
 export function runStaticPagesAnalysis(params: {
   betType: BetTypeKey;
   sports: SportKey[];
@@ -1097,7 +1678,38 @@ export function runStaticPagesAnalysis(params: {
   const feasibility = checkClientFeasibility(params.targetOdds, params.riskLevel, params.betType);
 
   const matchesInWindow = STATIC_MATCHES.filter((m) => m.hoursFromNow <= maxHours);
-  const effectiveMatches = matchesInWindow.length >= 6 ? matchesInWindow : STATIC_MATCHES;
+  let effectiveMatches = matchesInWindow.length >= 4 ? matchesInWindow : STATIC_MATCHES;
+
+  if (params.competitions && params.competitions.length > 0) {
+    if (params.competitions.includes('__none__')) {
+      effectiveMatches = [];
+    } else {
+      const selectedSet = new Set(params.competitions);
+      effectiveMatches = effectiveMatches.filter(
+        (m) => selectedSet.has(m.competitionId) || selectedSet.has(m.competitionName)
+      );
+    }
+  }
+
+  if (effectiveMatches.length === 0) {
+    return {
+      generatedAt: new Date().toISOString(),
+      calendarUpdatedTimestamp: formatRomeDate(new Date()),
+      betType: params.betType,
+      feasibility,
+      multiSportPrompt: null,
+      recommendedSingles: [],
+      bestSlip: null,
+      allCandidateSelections: [],
+      aiCandidateEvents: [],
+      coveredCompetitions: [],
+      providerWarnings: [],
+      isDemoData: false,
+      noEventsMessage:
+        'Nessuna partita di calcio disponibile per le competizioni e la finestra temporale selezionate.',
+      quotaStatus: getStaticBackendStatus().quota
+    };
+  }
 
   let allSelections: CandidateSelection[] = [];
   for (const m of effectiveMatches) {
@@ -1111,9 +1723,12 @@ export function runStaticPagesAnalysis(params: {
     allSelections = allSelections.filter((s) => allowedSet.has(classifyMarketGroup(s.market)));
   }
 
+  const activeCompNames = Array.from(new Set(effectiveMatches.map((m) => m.competitionName)));
+
   if (!feasibility.feasible) {
     return {
       generatedAt: new Date().toISOString(),
+      calendarUpdatedTimestamp: formatRomeDate(new Date()),
       betType: params.betType,
       feasibility,
       multiSportPrompt: null,
@@ -1128,14 +1743,7 @@ export function runStaticPagesAnalysis(params: {
           oddsSource: 'Catalogo Completo Mercati SNAI (45+ Tipologie)',
           statsSource: 'Classifiche, Marcatori e Probabili Formazioni 2026',
           rssSources: ['Gazzetta dello Sport', 'Sky Sport', 'SOS Fanta', 'BBC Sport'],
-          coveredCompetitions: [
-            'Serie A',
-            'UEFA Champions League',
-            'Premier League',
-            'La Liga',
-            'Bundesliga',
-            'Ligue 1'
-          ],
+          coveredCompetitions: activeCompNames,
           uncoveredNote: 'Tutti i mercati principali, combo, giocatori e speciali sono attivi.',
           dailyRequestsLimitInfo: 'Illimitato su GitHub Pages'
         }
@@ -1156,6 +1764,7 @@ export function runStaticPagesAnalysis(params: {
 
   return {
     generatedAt: new Date().toISOString(),
+    calendarUpdatedTimestamp: formatRomeDate(new Date()),
     betType: params.betType,
     feasibility,
     multiSportPrompt: null,
@@ -1170,14 +1779,7 @@ export function runStaticPagesAnalysis(params: {
         oddsSource: 'Catalogo Completo Mercati SNAI (45+ Tipologie)',
         statsSource: 'Classifiche, Marcatori e Probabili Formazioni 2026',
         rssSources: ['Gazzetta dello Sport', 'Sky Sport', 'SOS Fanta', 'BBC Sport'],
-        coveredCompetitions: [
-          'Serie A',
-          'UEFA Champions League',
-          'Premier League',
-          'La Liga',
-          'Bundesliga',
-          'Ligue 1'
-        ],
+        coveredCompetitions: activeCompNames,
         uncoveredNote: 'Tutti i mercati principali, combo, giocatori e speciali sono attivi.',
         dailyRequestsLimitInfo: 'Illimitato su GitHub Pages'
       }

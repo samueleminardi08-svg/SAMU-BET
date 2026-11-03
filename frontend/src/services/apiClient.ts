@@ -73,6 +73,7 @@ export interface AnalyzeApiResponse {
 
 import {
   getStaticBackendStatus,
+  getStaticCompetitions,
   runStaticPagesAnalysis
 } from '../engine/staticPagesEngine';
 
@@ -96,17 +97,17 @@ export async function fetchCompetitions(timeWindow: TimeWindowKey = 'hours48'): 
 }> {
   try {
     const res = await fetch(`./api/competitions?timeWindow=${encodeURIComponent(timeWindow)}`);
-    if (res.ok) {
-      return await res.json();
+    const contentType = res.headers.get('content-type') || '';
+    if (res.ok && contentType.includes('application/json')) {
+      const data = await res.json();
+      if (Array.isArray(data.competitions) && data.competitions.length > 0) {
+        return data;
+      }
     }
   } catch {
     // fallback se backend non risponde
   }
-  return {
-    competitions: [],
-    calendarUpdatedTimestamp: new Date().toLocaleDateString('it-IT'),
-    timeWindow
-  };
+  return getStaticCompetitions(timeWindow);
 }
 
 export async function runBackendAnalysis(params: {

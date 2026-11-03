@@ -39,6 +39,7 @@ import { ResultsView } from './components/ResultsView';
 import { LocalAISettings } from './components/LocalAISettings';
 import { CoveredCompetitionsModal } from './components/CoveredCompetitions';
 import { CompetitionsPicker } from './components/CompetitionsPicker';
+import { getStaticCompetitions } from './engine/staticPagesEngine';
 
 export const App: React.FC = () => {
   const [activeScreen, setActiveScreen] = useState<'form' | 'results' | 'settings'>('form');
@@ -54,8 +55,10 @@ export const App: React.FC = () => {
   const [allowedMarketGroups, setAllowedMarketGroups] = useState<MarketGroupKey[]>([]);
   const [diversityMode, setDiversityMode] = useState<DiversityModeKey>('auto');
 
-  // Competizioni e Coppe
-  const [availableCompetitions, setAvailableCompetitions] = useState<CompetitionItem[]>([]);
+  // Competizioni e Coppe (pre-popolate con motore statico per reattività immediata anche offline / GitHub Pages)
+  const [availableCompetitions, setAvailableCompetitions] = useState<CompetitionItem[]>(() => {
+    return getStaticCompetitions('hours48').competitions;
+  });
   const [selectedCompetitionIds, setSelectedCompetitionIds] = useState<string[]>(() => {
     try {
       const saved = localStorage.getItem('samubet_selected_competitions');
@@ -66,7 +69,9 @@ export const App: React.FC = () => {
       return [];
     }
   });
-  const [calendarUpdatedTimestamp, setCalendarUpdatedTimestamp] = useState<string>('');
+  const [calendarUpdatedTimestamp, setCalendarUpdatedTimestamp] = useState<string>(() => {
+    return getStaticCompetitions('hours48').calendarUpdatedTimestamp;
+  });
 
   // Stato Backend & Risultati
   const [backendStatus, setBackendStatus] = useState<BackendStatusResponse | null>(null);
