@@ -1,6 +1,18 @@
 export type SportKey = 'football' | 'f1' | 'tennis';
-export type TimeWindowKey = 'today' | 'hours48' | 'days7';
+export type TimeWindowKey = 'today' | 'hours48' | 'days7' | 'days14';
 export type BetTypeKey = 'single' | 'multiple';
+export type DiversityModeKey = 'auto' | 'high' | 'normal' | 'none';
+export type CompetitionType = 'league' | 'cup' | 'other';
+
+export interface CompetitionItem {
+  id: string;
+  name: string;
+  country: string;
+  type: CompetitionType;
+  eventsCount: number;
+  sport: SportKey;
+}
+
 export type MarketGroupKey =
   | '1x2_dc'
   | 'under_over'
@@ -94,8 +106,8 @@ export const DEFAULT_TARGET_TOLERANCE = 0.08;
 export const RISK_CONFIG_UI: Record<number, RiskLevelUI> = {
   1: {
     level: 1,
-    minProb: 0.80,
-    maxOdds: 1.30,
+    minProb: 0.8,
+    maxOdds: 1.3,
     label: 'Molto prudente',
     description: 'Esiti ad altissima probabilità stimata (≥ 80%) e quota contenuta (≤ 1.30).',
     colorHex: '#22c55e',
@@ -122,7 +134,7 @@ export const RISK_CONFIG_UI: Record<number, RiskLevelUI> = {
   4: {
     level: 4,
     minProb: 0.58,
-    maxOdds: 1.90,
+    maxOdds: 1.9,
     label: 'Moderato-basso',
     description: 'Favorite solide ma con quote più interessanti: probabilità ≥ 58%, quota ≤ 1.90.',
     colorHex: '#06b6d4',
@@ -130,8 +142,8 @@ export const RISK_CONFIG_UI: Record<number, RiskLevelUI> = {
   },
   5: {
     level: 5,
-    minProb: 0.50,
-    maxOdds: 2.30,
+    minProb: 0.5,
+    maxOdds: 2.3,
     label: 'Bilanciato',
     description: 'Equilibrio tra probabilità di riuscita (≥ 50%) e valore atteso (quota ≤ 2.30).',
     colorHex: '#3b82f6',
@@ -140,7 +152,7 @@ export const RISK_CONFIG_UI: Record<number, RiskLevelUI> = {
   6: {
     level: 6,
     minProb: 0.42,
-    maxOdds: 2.80,
+    maxOdds: 2.8,
     label: 'Moderato-alto',
     description: 'Accetta esiti combattuti (probabilità ≥ 42%) con quote fino a 2.80.',
     colorHex: '#eab308',
@@ -149,7 +161,7 @@ export const RISK_CONFIG_UI: Record<number, RiskLevelUI> = {
   7: {
     level: 7,
     minProb: 0.35,
-    maxOdds: 3.50,
+    maxOdds: 3.5,
     label: 'Dinamico',
     description: 'Cerca quote di valore fino a 3.50 con probabilità minima del 35%.',
     colorHex: '#f59e0b',
@@ -158,7 +170,7 @@ export const RISK_CONFIG_UI: Record<number, RiskLevelUI> = {
   8: {
     level: 8,
     minProb: 0.28,
-    maxOdds: 4.50,
+    maxOdds: 4.5,
     label: 'Aggressivo',
     description: 'Privilegia il moltiplicatore e il valore atteso: probabilità ≥ 28%, quota ≤ 4.50.',
     colorHex: '#f97316',
@@ -166,8 +178,8 @@ export const RISK_CONFIG_UI: Record<number, RiskLevelUI> = {
   },
   9: {
     level: 9,
-    minProb: 0.20,
-    maxOdds: 6.50,
+    minProb: 0.2,
+    maxOdds: 6.5,
     label: 'Molto rischioso',
     description: 'Esiti difficili ad alta quota (fino a 6.50) con probabilità minima del 20%.',
     colorHex: '#ef4444',
@@ -176,7 +188,7 @@ export const RISK_CONFIG_UI: Record<number, RiskLevelUI> = {
   10: {
     level: 10,
     minProb: 0.12,
-    maxOdds: 10.00,
+    maxOdds: 10.0,
     label: 'Estremo',
     description: 'Massima esposizione al rischio: quote fino a 10.00 e probabilità minima del 12%.',
     colorHex: '#e11d48',
@@ -185,9 +197,10 @@ export const RISK_CONFIG_UI: Record<number, RiskLevelUI> = {
   11: {
     level: 11,
     minProb: 0.01,
-    maxOdds: 1000.00,
+    maxOdds: 1000.0,
     label: 'ULTRA (100% IA)',
-    description: 'Nessun limite di quota o probabilità: ti affidi totalmente al giudizio dell\'IA per centrare la quota desiderata.',
+    description:
+      'Nessun limite di quota o probabilità: ti affidi totalmente al giudizio dell\'IA per centrare la quota desiderata.',
     colorHex: '#a855f7',
     bgTint: 'rgba(168, 85, 247, 0.18)'
   }
@@ -208,6 +221,7 @@ export interface CandidateSelection {
   effectiveOdds: number;
   pMarket: number;
   marginUnadjusted: boolean;
+  sourceType?: 'market' | 'model';
   pAi?: number;
   aiConfidence?: number;
   pFinal: number;
@@ -217,6 +231,8 @@ export interface CandidateSelection {
   estimationMode: 'ai_plus_market' | 'market_only';
   keyFactors: string[];
   redFlags: string[];
+  dataGaps?: string[];
+  sources?: string[];
 }
 
 export interface FeasibilityCheckResult {
@@ -240,6 +256,15 @@ export interface MultiSportPromptInfo {
   minimumEventsNeeded: number;
 }
 
+export interface SlipReview {
+  verdict: 'favorevole' | 'neutro' | 'critico';
+  summary: string;
+  warnings: string[];
+  recommendedMaxSameMarket: number;
+  overallConfidence: number;
+  keyFactors: string[];
+}
+
 export interface BettingSlipResult {
   selections: CandidateSelection[];
   totalOdds: number;
@@ -252,6 +277,15 @@ export interface BettingSlipResult {
   lowProbabilityWarning: boolean;
   negativeEvNotice: string | null;
   explanation?: string;
+  slipReview?: SlipReview;
+  diversityApplied?: {
+    mode: DiversityModeKey;
+    limit: number;
+    maxFound: number;
+    rationale?: string;
+    wasRelaxed?: boolean;
+  };
+  sameModelWarning?: string;
 }
 
 export interface RssNewsItem {
@@ -277,6 +311,7 @@ export interface EventAIContextPayload {
     line?: number;
     effectiveOdds: number;
     pMarket: number;
+    sourceType?: 'market' | 'model';
   }>;
 }
 

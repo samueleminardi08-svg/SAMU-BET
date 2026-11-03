@@ -10,6 +10,7 @@ interface HeaderProps {
   hasResults: boolean;
   isDemoData: boolean;
   missingRequiredKeysCount: number;
+  activeAiModel?: string;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -19,7 +20,8 @@ export const Header: React.FC<HeaderProps> = ({
   aiStatus,
   hasResults,
   isDemoData,
-  missingRequiredKeysCount
+  missingRequiredKeysCount,
+  activeAiModel
 }) => {
   const aiConnected = aiStatus.reachable && aiStatus.unslothReachable;
 
@@ -59,8 +61,8 @@ export const Header: React.FC<HeaderProps> = ({
           <Cpu size={14} />
           <span className="ai-status-text">
             {aiConnected
-              ? 'Gemini AI Attiva'
-              : 'Gemini AI non attiva (Solo Mercato)'}
+              ? `AI: ${activeAiModel || 'Gemini 3.8 Flash'}`
+              : 'Solo Mercato (AI non attiva)'}
           </span>
         </button>
       </div>
@@ -109,4 +111,3 @@ export const Header: React.FC<HeaderProps> = ({
     </header>
   );
 };
-

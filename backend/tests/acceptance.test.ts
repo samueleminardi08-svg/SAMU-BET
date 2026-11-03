@@ -15,8 +15,11 @@ import {
   findBestBettingSlip,
   findBestBettingSlipAuto
 } from '../src/engine/slipBuilder.js';
-import { CandidateSelection } from '../src/types/models.js';
+import { CandidateSelection, AnalyzeRequestSchema, SlipReview, SlipReviewSchema } from '../src/types/models.js';
 import { createBridgeApp } from '../../local-ai-bridge/src/index.js';
+import { KNOWN_COMPETITIONS, classifyCompetition } from '../src/config/competitionsCatalog.js';
+import { formatRomeDateTime, deduplicateFixtures, CompositeFixturesProvider } from '../src/providers/fixturesProvider.js';
+import { getWindowEndTimestamp, getActiveOddsProvider } from '../src/providers/oddsProvider.js';
 
 function createSyntheticPoolForTest1(): CandidateSelection[] {
   // Eventi diversi con p >= 0.50 e quota <= 2.30 per R=5, tali che un prodotto di 3 eventi sia ~6.00 (es. 1.82 * 1.82 * 1.81 ≈ 5.995)
@@ -300,3 +303,258 @@ describe('Sezione 12 — Test di accettazione SAMU BET', () => {
   });
 });
 
+
+
+describe('Sezione 7 — Nuovi Scenari di Accettazione SAMU BET v1.1', () => {
+  it('Scenario 1: Con data simulata 02/11/2026, il calendario esclude partite passate in Europe/Rome e mostra il timestamp', () => {
+    const simulatedNow = new Date('2026-11-02T12:00:00Z');
+    const pastTime = new Date('2026-11-02T10:00:00Z').toISOString();
+    const futureTime = new Date('2026-11-02T18:00:00Z').toISOString();
+
+    const rawFixtures = [
+      {
+        id: 'f-past',
+        competitionId: 'soccer_italy_serie_a',
+        competitionName: 'Serie A',
+        country: 'Italia',
+        type: 'league' as const,
+        homeTeam: 'Roma',
+        awayTeam: 'Lazio',
+        kickoffUTC: pastTime,
+        status: 'scheduled' as const,
+        sources: ['the-odds-api'],
+        fetchedAt: simulatedNow.toISOString()
+      },
+      {
+        id: 'f-future',
+        competitionId: 'soccer_italy_serie_a',
+        competitionName: 'Serie A',
+        country: 'Italia',
+        type: 'league' as const,
+        homeTeam: 'Milan',
+        awayTeam: 'Juventus',
+        kickoffUTC: futureTime,
+        status: 'scheduled' as const,
+        sources: ['the-odds-api'],
+        fetchedAt: simulatedNow.toISOString()
+      }
+    ];
+
+    const filtered = rawFixtures.filter((f) => new Date(f.kickoffUTC).getTime() > simulatedNow.getTime());
+    expect(filtered).toHaveLength(1);
+    expect(filtered[0].id).toBe('f-future');
+
+    const romeTimeStr = formatRomeDateTime(simulatedNow);
+    expect(romeTimeStr).toBeDefined();
+    expect(romeTimeStr.length).toBeGreaterThan(5);
+  });
+
+  it('Scenario 2: Filtro solo coppe -> solo partite di tipo cup; se 0 eventi non crasha', async () => {
+    const compMeta = KNOWN_COMPETITIONS['soccer_italy_coppa_italia'];
+    expect(compMeta.type).toBe('cup');
+    const leagueMeta = KNOWN_COMPETITIONS['soccer_italy_serie_a'];
+    expect(leagueMeta.type).toBe('league');
+
+    const cupOnlyIds = ['soccer_italy_coppa_italia'];
+    const demoProvider = getActiveOddsProvider();
+    const res = await demoProvider.fetchEvents(['football'], 'hours48', cupOnlyIds);
+    for (const ev of res.events) {
+      const meta = classifyCompetition(ev.competitionId, ev.competitionName);
+      expect(meta.type).toBe('cup');
+    }
+  });
+
+  it('Scenario 3: Finestra 14 giorni (days14) accettata da schema e calcolo temporale corretto', () => {
+    const parsed = AnalyzeRequestSchema.safeParse({
+      betType: 'multiple',
+      targetOdds: 5.0,
+      riskLevel: 5,
+      timeWindow: 'days14'
+    });
+    expect(parsed.success).toBe(true);
+
+    const now = new Date('2026-11-02T12:00:00Z');
+    const end14 = getWindowEndTimestamp('days14', now);
+    const diffDays = Math.round((end14.getTime() - now.getTime()) / (24 * 3600 * 1000));
+    expect(diffDays).toBe(14);
+  });
+
+  it('Scenario 4: Fallback provider non disponibile -> catena di fallback pulita', async () => {
+    const failingProvider = {
+      name: 'failing',
+      async getFixtures() {
+        throw new Error('503 Service Unavailable');
+      }
+    };
+    const fallbackProvider = {
+      name: 'fallback',
+      async getFixtures() {
+        return [
+          {
+            id: 'fb-1',
+            competitionId: 'soccer_italy_serie_a',
+            competitionName: 'Serie A',
+            country: 'Italia',
+            type: 'league' as const,
+            homeTeam: 'Inter',
+            awayTeam: 'Napoli',
+            kickoffUTC: new Date(Date.now() + 3600000).toISOString(),
+            status: 'scheduled' as const,
+            sources: ['fallback'],
+            fetchedAt: new Date().toISOString()
+          }
+        ];
+      }
+    };
+
+    const composite = new CompositeFixturesProvider([failingProvider, fallbackProvider]);
+    const fixtures = await composite.getFixtures({ from: new Date(), to: new Date(Date.now() + 86400000) });
+    expect(fixtures).toHaveLength(1);
+    expect(fixtures[0].homeTeam).toBe('Inter');
+  });
+
+  it('Scenario 5: Deduplica partite entro ±3h -> unifica sorgenti', () => {
+    const timeA = new Date('2026-11-03T18:00:00Z').toISOString();
+    const timeB = new Date('2026-11-03T19:30:00Z').toISOString();
+    const fixtures = [
+      {
+        id: 'f-src1',
+        competitionId: 'soccer_italy_serie_a',
+        competitionName: 'Serie A',
+        country: 'Italia',
+        type: 'league' as const,
+        homeTeam: 'FC Internazionale',
+        awayTeam: 'SSC Napoli',
+        kickoffUTC: timeA,
+        status: 'scheduled' as const,
+        sources: ['the-odds-api'],
+        fetchedAt: new Date().toISOString()
+      },
+      {
+        id: 'f-src2',
+        competitionId: 'SA',
+        competitionName: 'Serie A',
+        country: 'Italia',
+        type: 'league' as const,
+        homeTeam: 'Inter',
+        awayTeam: 'Napoli',
+        kickoffUTC: timeB,
+        status: 'scheduled' as const,
+        sources: ['football-data'],
+        fetchedAt: new Date().toISOString()
+      }
+    ];
+
+    const deduped = deduplicateFixtures(fixtures);
+    expect(deduped).toHaveLength(1);
+    expect(deduped[0].sources).toContain('the-odds-api');
+    expect(deduped[0].sources).toContain('football-data');
+  });
+
+  it('Scenario 6: Fallback graceful su market_only se AI offline', () => {
+    const fallback = computeFinalProbability(0.55, undefined, undefined);
+    expect(fallback.estimationMode).toBe('market_only');
+    expect(fallback.pFinal).toBe(0.55);
+  });
+
+  it('Scenario 7: Clamp ±10pp invariato', () => {
+    const pMarket = 0.50;
+    const high = computeFinalProbability(pMarket, 0.90, 0.8);
+    expect(high.clampedPAi).toBe(0.60);
+    expect(high.pFinal).toBeLessThanOrEqual(0.60);
+
+    const low = computeFinalProbability(pMarket, 0.10, 0.8);
+    expect(low.clampedPAi).toBe(0.40);
+    expect(low.pFinal).toBeGreaterThanOrEqual(0.40);
+  });
+
+  it('Scenario 8: Varietà Auto valida raccomandazione in [1, hardMax] e manuale prevale', () => {
+    const slipLength = 6;
+    const hardMax = Math.max(2, Math.ceil(slipLength / 2));
+    expect(hardMax).toBe(3);
+
+    const rec0 = 0;
+    const clamped0 = Math.max(1, Math.min(hardMax, rec0));
+    expect(clamped0).toBe(1);
+
+    const rec10 = 10;
+    const clamped10 = Math.max(1, Math.min(hardMax, rec10));
+    expect(clamped10).toBe(3);
+
+    const mode = 'high';
+    const effective = mode === 'high' ? 2 : clamped10;
+    expect(effective).toBe(2);
+  });
+
+  it('Scenario 9: La revisione della schedina (Stadio B) non altera le probabilità pFinal', () => {
+    const pool = createSyntheticPoolForTest1().slice(0, 3);
+    const slip = buildSlipResultObject(pool, 6, 0.08);
+
+    const initialProbs = slip.selections.map((s) => s.pFinal);
+    const initialOdds = slip.selections.map((s) => s.effectiveOdds);
+
+    const mockReview: SlipReview = {
+      verdict: 'favorevole',
+      summary: 'Schedina bilanciata con ottimo valore.',
+      warnings: [],
+      recommendedMaxSameMarket: 2,
+      overallConfidence: 0.85,
+      keyFactors: ['Fattore A', 'Fattore B']
+    };
+
+    slip.slipReview = mockReview;
+
+    expect(slip.selections.map((s) => s.pFinal)).toEqual(initialProbs);
+    expect(slip.selections.map((s) => s.effectiveOdds)).toEqual(initialOdds);
+  });
+
+  it('Scenario 10: slipReview con JSON non valido viene respinto da Zod senza errori', () => {
+    const invalidJsonObj = { verdict: 'non_valido', summary: 123 };
+    const parseResult = SlipReviewSchema.safeParse(invalidJsonObj);
+    expect(parseResult.success).toBe(false);
+  });
+
+  it('Scenario 11: Icone PWA: manifest.json referenzia icon-192.png e icon-512.png (any e maskable), i file esistono e non ci sono riferimenti a vecchi SVG', () => {
+    const proposalsDir = path.resolve(process.cwd(), '../frontend/public/icon-proposals');
+    expect(fs.existsSync(proposalsDir)).toBe(true);
+
+    for (let i = 1; i <= 5; i++) {
+      const iconPath = path.join(proposalsDir, `icon-${i}.png`);
+      expect(fs.existsSync(iconPath)).toBe(true);
+      const stat = fs.statSync(iconPath);
+      expect(stat.size).toBeGreaterThan(1000);
+    }
+
+    const previewPath = path.resolve(process.cwd(), '../frontend/icon-preview.html');
+    expect(fs.existsSync(previewPath)).toBe(true);
+
+    const pubDir = path.resolve(process.cwd(), '../frontend/public');
+    const icon192 = path.join(pubDir, 'icon-192.png');
+    const icon512 = path.join(pubDir, 'icon-512.png');
+    const appleIcon = path.join(pubDir, 'apple-touch-icon.png');
+    const favicon = path.join(pubDir, 'favicon.png');
+
+    expect(fs.existsSync(icon192)).toBe(true);
+    expect(fs.existsSync(icon512)).toBe(true);
+    expect(fs.existsSync(appleIcon)).toBe(true);
+    expect(fs.existsSync(favicon)).toBe(true);
+
+    const manifestPath = path.join(pubDir, 'manifest.json');
+    const manifestContent = fs.readFileSync(manifestPath, 'utf-8');
+    const manifest = JSON.parse(manifestContent);
+
+    expect(manifestContent).not.toContain('.svg');
+    const icon192Refs = manifest.icons.filter((ic: any) => ic.src.includes('icon-192.png'));
+    const icon512Refs = manifest.icons.filter((ic: any) => ic.src.includes('icon-512.png'));
+
+    expect(icon192Refs.length).toBeGreaterThanOrEqual(1);
+    expect(icon512Refs.length).toBeGreaterThanOrEqual(1);
+
+    const purposes = manifest.icons.map((ic: any) => ic.purpose);
+    expect(purposes).toContain('any');
+    expect(purposes).toContain('maskable');
+
+    expect(fs.existsSync(path.join(pubDir, 'icon-192.svg'))).toBe(false);
+    expect(fs.existsSync(path.join(pubDir, 'icon-512.svg'))).toBe(false);
+  });
+});

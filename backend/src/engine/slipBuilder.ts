@@ -14,6 +14,12 @@ import {
   MultiSportPromptInfo
 } from '../types/models.js';
 
+export function getMarketOutcomeKey(cand: CandidateSelection): string {
+  const m = cand.market.toLowerCase().trim();
+  const s = cand.selection.toLowerCase().replace(/\s*\([^)]*\)/g, '').trim();
+  return `${m}::${s}`;
+}
+
 /**
  * Verifica di fattibilità quando N è specificato (usata anche dai test di accettazione)
  */
@@ -196,7 +202,15 @@ export function scoreAndSortCandidates(
 
   const scored = candidates.map((c) => {
     const pNorm = rangeP > 1e-9 ? (c.pFinal - minP) / rangeP : 1;
-    const evNorm = rangeEv > 1e-9 ? (c.ev - minEv) / rangeEv : 1;
+    // Sezione 6.2: per quote stimate dal modello ('model'), l'EV è solo indicativo
+    // e NON entra nel punteggio di selezione finché l'utente non inserisce la quota reale SNAI.
+    const evNorm =
+      c.sourceType === 'model' && c.snaiRealOdds === undefined
+        ? 0
+        : rangeEv > 1e-9
+        ? (c.ev - minEv) / rangeEv
+        : 1;
+
     const aiConfBonus = riskLevel === 11 ? 0.15 * (c.aiConfidence ?? 0.7) : 0;
     const score = (1 - alpha) * pNorm + alpha * evNorm + aiConfBonus;
     return {
@@ -286,7 +300,8 @@ export function buildSlipResultObject(
   selections: CandidateSelection[],
   targetOdds: number,
   tolerance: number,
-  explanation?: string
+  explanation?: string,
+  wasRelaxed?: boolean
 ): BettingSlipResult {
   const totalOdds = Number(
     selections.reduce((acc, s) => acc * s.effectiveOdds, 1).toFixed(2)
@@ -306,6 +321,21 @@ export function buildSlipResultObject(
       ? `Valore atteso (EV) negativo (${(combinedEv * 100).toFixed(1)}%): il margine matematico dei bookmaker riduce il rendimento teorico nel lungo periodo.`
       : null;
 
+  // Sezione 6.5: controllo varietà e avviso sulle stime dello stesso modello
+  const counts = new Map<string, number>();
+  let maxFound = 1;
+  for (const s of selections) {
+    const k = getMarketOutcomeKey(s);
+    const c = (counts.get(k) || 0) + 1;
+    counts.set(k, c);
+    if (c > maxFound) maxFound = c;
+  }
+
+  const sameModelWarning =
+    maxFound >= 3
+      ? 'Le stime condividono lo stesso modello o mercato, la probabilità reale può essere più bassa.'
+      : undefined;
+
   return {
     selections,
     totalOdds,
@@ -317,19 +347,22 @@ export function buildSlipResultObject(
     difficultyLabel: getDifficultyLabel(combinedProbability),
     lowProbabilityWarning,
     negativeEvNotice,
-    explanation
+    explanation,
+    sameModelWarning
   };
 }
 
 /**
  * Ricerca Beam Search per un numero fisso N di selezioni (1 selezione max per evento)
+ * con supporto al vincolo di varietà (maxSameMarket) e penalità per ripetizione.
  */
 export function findBestBettingSlip(
   candidatePool: CandidateSelection[],
   targetOdds: number,
   numEvents: number,
   riskLevel: number,
-  tolerance: number = DEFAULT_TARGET_TOLERANCE
+  tolerance: number = DEFAULT_TARGET_TOLERANCE,
+  maxSameMarket?: number
 ): BettingSlipResult | null {
   const distinctEvents = new Set(candidatePool.map((c) => c.eventId));
   if (distinctEvents.size < numEvents || numEvents < 1) {
@@ -337,148 +370,196 @@ export function findBestBettingSlip(
   }
 
   const desiredGeometricStep = Math.pow(targetOdds, 1 / numEvents);
-  const BEAM_WIDTH = numEvents > 12 ? 90 : 220;
+  const BEAM_WIDTH = numEvents > 12 ? 50 : 80;
 
   interface PartialCombo {
     selections: CandidateSelection[];
     usedEventIds: Set<string>;
+    marketCounts: Map<string, number>;
     oddsProduct: number;
     probProduct: number;
+    diversityPenalty: number;
   }
 
-  let beam: PartialCombo[] = [
-    {
-      selections: [],
-      usedEventIds: new Set<string>(),
-      oddsProduct: 1.0,
-      probProduct: 1.0
-    }
-  ];
+  // Funzione interna di ricerca con un dato limite hard su maxSameMarket
+  const runBeamWithLimit = (limit?: number): { slip: BettingSlipResult; withinTol: boolean } | null => {
+    let beam: PartialCombo[] = [
+      {
+        selections: [],
+        usedEventIds: new Set<string>(),
+        marketCounts: new Map<string, number>(),
+        oddsProduct: 1.0,
+        probProduct: 1.0,
+        diversityPenalty: 0
+      }
+    ];
 
-  for (let step = 1; step <= numEvents; step++) {
-    const nextBeam: PartialCombo[] = [];
-    const seenSignatures = new Set<string>();
-    const expectedSubTarget = Math.pow(desiredGeometricStep, step);
+    for (let step = 1; step <= numEvents; step++) {
+      const nextBeam: PartialCombo[] = [];
+      const seenSignatures = new Set<string>();
+      const expectedSubTarget = Math.pow(desiredGeometricStep, step);
 
-    for (const partial of beam) {
-      for (const cand of candidatePool) {
-        if (partial.usedEventIds.has(cand.eventId)) continue;
+      for (const partial of beam) {
+        for (const cand of candidatePool) {
+          if (partial.usedEventIds.has(cand.eventId)) continue;
 
-        const nextSelections = [...partial.selections, cand];
-        const signature = nextSelections
-          .map((s) => s.id)
-          .sort()
-          .join('|');
+          const mKey = getMarketOutcomeKey(cand);
+          const currentCount = partial.marketCounts.get(mKey) || 0;
+          if (limit !== undefined && currentCount >= limit) {
+            continue; // Rispetta il vincolo di varietà
+          }
 
-        if (seenSignatures.has(signature)) continue;
-        seenSignatures.add(signature);
+          const nextSelections = [...partial.selections, cand];
+          const signature = nextSelections
+            .map((s) => s.id)
+            .sort()
+            .join('|');
 
-        const nextUsed = new Set(partial.usedEventIds);
-        nextUsed.add(cand.eventId);
+          if (seenSignatures.has(signature)) continue;
+          seenSignatures.add(signature);
 
-        nextBeam.push({
-          selections: nextSelections,
-          usedEventIds: nextUsed,
-          oddsProduct: partial.oddsProduct * cand.effectiveOdds,
-          probProduct: partial.probProduct * cand.pFinal
+          const nextUsed = new Set(partial.usedEventIds);
+          nextUsed.add(cand.eventId);
+
+          const nextCounts = new Map(partial.marketCounts);
+          nextCounts.set(mKey, currentCount + 1);
+
+          // Penalità morbida di varietà se una selezione è già presente più volte
+          const addedPenalty = currentCount > 0 ? currentCount * 0.12 : 0;
+
+          nextBeam.push({
+            selections: nextSelections,
+            usedEventIds: nextUsed,
+            marketCounts: nextCounts,
+            oddsProduct: partial.oddsProduct * cand.effectiveOdds,
+            probProduct: partial.probProduct * cand.pFinal,
+            diversityPenalty: partial.diversityPenalty + addedPenalty
+          });
+        }
+      }
+
+      if (nextBeam.length === 0) {
+        return null;
+      }
+
+      if (step < numEvents) {
+        nextBeam.sort((a, b) => {
+          const distA = Math.abs(Math.log(a.oddsProduct) - Math.log(expectedSubTarget));
+          const distB = Math.abs(Math.log(b.oddsProduct) - Math.log(expectedSubTarget));
+          const heuristicA = distA - 0.35 * a.probProduct + a.diversityPenalty;
+          const heuristicB = distB - 0.35 * b.probProduct + b.diversityPenalty;
+          return heuristicA - heuristicB;
         });
+        beam = nextBeam.slice(0, BEAM_WIDTH);
+      } else {
+        beam = nextBeam;
       }
     }
 
-    if (nextBeam.length === 0) {
-      return null;
-    }
+    const minAllowedTotal = targetOdds * (1 - tolerance);
+    const maxAllowedTotal = targetOdds * (1 + tolerance);
 
-    if (step < numEvents) {
-      nextBeam.sort((a, b) => {
-        const distA = Math.abs(Math.log(a.oddsProduct) - Math.log(expectedSubTarget));
-        const distB = Math.abs(Math.log(b.oddsProduct) - Math.log(expectedSubTarget));
-        const heuristicA = distA - 0.35 * a.probProduct;
-        const heuristicB = distB - 0.35 * b.probProduct;
-        return heuristicA - heuristicB;
-      });
-      beam = nextBeam.slice(0, BEAM_WIDTH);
-    } else {
-      beam = nextBeam;
-    }
-  }
-
-  const minAllowedTotal = targetOdds * (1 - tolerance);
-  const maxAllowedTotal = targetOdds * (1 + tolerance);
-
-  const withinToleranceCombos = beam.filter(
-    (c) => c.oddsProduct >= minAllowedTotal - 1e-6 && c.oddsProduct <= maxAllowedTotal + 1e-6
-  );
-
-  const alpha = (Math.max(1, Math.min(10, riskLevel)) - 1) / 9;
-
-  if (withinToleranceCombos.length > 0) {
-    const pValues = withinToleranceCombos.map((c) => c.probProduct);
-    const evValues = withinToleranceCombos.map((c) => c.probProduct * c.oddsProduct - 1);
-
-    const minP = Math.min(...pValues);
-    const maxP = Math.max(...pValues);
-    const minEv = Math.min(...evValues);
-    const maxEv = Math.max(...evValues);
-
-    const rangeP = maxP - minP;
-    const rangeEv = maxEv - minEv;
-
-    let bestCombo = withinToleranceCombos[0];
-    let bestScore = -Infinity;
-
-    for (const combo of withinToleranceCombos) {
-      const evComb = combo.probProduct * combo.oddsProduct - 1;
-      const pNorm = rangeP > 1e-9 ? (combo.probProduct - minP) / rangeP : 1;
-      const evNorm = rangeEv > 1e-9 ? (evComb - minEv) / rangeEv : 1;
-      const score = (1 - alpha) * pNorm + alpha * evNorm;
-
-      if (score > bestScore) {
-        bestScore = score;
-        bestCombo = combo;
-      }
-    }
-
-    return buildSlipResultObject(
-      bestCombo.selections,
-      targetOdds,
-      tolerance,
-      `Schedina di ${bestCombo.selections.length} ${
-        bestCombo.selections.length === 1 ? 'evento' : 'eventi'
-      } ottimizzata entro ±${Math.round(tolerance * 100)}% dalla quota ${targetOdds.toFixed(2)}.`
+    const withinToleranceCombos = beam.filter(
+      (c) => c.oddsProduct >= minAllowedTotal - 1e-6 && c.oddsProduct <= maxAllowedTotal + 1e-6
     );
+
+    const alpha = (Math.max(1, Math.min(10, riskLevel)) - 1) / 9;
+
+    if (withinToleranceCombos.length > 0) {
+      const pValues = withinToleranceCombos.map((c) => c.probProduct);
+      const evValues = withinToleranceCombos.map((c) => c.probProduct * c.oddsProduct - 1);
+
+      const minP = Math.min(...pValues);
+      const maxP = Math.max(...pValues);
+      const minEv = Math.min(...evValues);
+      const maxEv = Math.max(...evValues);
+
+      const rangeP = maxP - minP;
+      const rangeEv = maxEv - minEv;
+
+      let bestCombo = withinToleranceCombos[0];
+      let bestScore = -Infinity;
+
+      for (const combo of withinToleranceCombos) {
+        const evComb = combo.probProduct * combo.oddsProduct - 1;
+        const pNorm = rangeP > 1e-9 ? (combo.probProduct - minP) / rangeP : 1;
+        const evNorm = rangeEv > 1e-9 ? (evComb - minEv) / rangeEv : 1;
+        // Includi una penalità morbida di varietà nel punteggio finale
+        const score = (1 - alpha) * pNorm + alpha * evNorm - 0.15 * combo.diversityPenalty;
+
+        if (score > bestScore) {
+          bestScore = score;
+          bestCombo = combo;
+        }
+      }
+
+      return {
+        slip: buildSlipResultObject(
+          bestCombo.selections,
+          targetOdds,
+          tolerance,
+          `Schedina di ${bestCombo.selections.length} ${
+            bestCombo.selections.length === 1 ? 'evento' : 'eventi'
+          } ottimizzata entro ±${Math.round(tolerance * 100)}% dalla quota ${targetOdds.toFixed(2)}.`
+        ),
+        withinTol: true
+      };
+    }
+
+    beam.sort((a, b) => {
+      const diffA = Math.abs(Math.log(a.oddsProduct) - Math.log(targetOdds));
+      const diffB = Math.abs(Math.log(b.oddsProduct) - Math.log(targetOdds));
+      if (Math.abs(diffA - diffB) > 0.015) return diffA - diffB;
+      return b.probProduct - a.probProduct;
+    });
+
+    const closest = beam[0];
+    return {
+      slip: buildSlipResultObject(
+        closest.selections,
+        targetOdds,
+        tolerance,
+        `Nota: nessuna combinazione rientra nel ±${Math.round(tolerance * 100)}% di quota ${targetOdds.toFixed(
+          2
+        )}. Viene mostrata la combinazione valida più vicina (${closest.selections.length} ${
+          closest.selections.length === 1 ? 'partita' : 'partite'
+        }, quota ${closest.oddsProduct.toFixed(2)}).`
+      ),
+      withinTol: false
+    };
+  };
+
+  // 1. Prova con il limite richiesto
+  let attempt = runBeamWithLimit(maxSameMarket);
+  if (attempt && attempt.withinTol) {
+    return attempt.slip;
   }
 
-  beam.sort((a, b) => {
-    const diffA = Math.abs(Math.log(a.oddsProduct) - Math.log(targetOdds));
-    const diffB = Math.abs(Math.log(b.oddsProduct) - Math.log(targetOdds));
-    if (Math.abs(diffA - diffB) > 0.015) return diffA - diffB;
-    return b.probProduct - a.probProduct;
-  });
+  // 2. Se non rientra nella tolleranza o non trova nulla, rilassa gradualmente fino a numEvents (Sezione 6.3)
+  if (maxSameMarket !== undefined && maxSameMarket < numEvents) {
+    for (let relaxedLimit = maxSameMarket + 1; relaxedLimit <= numEvents; relaxedLimit++) {
+      const relaxedAttempt = runBeamWithLimit(relaxedLimit);
+      if (relaxedAttempt && relaxedAttempt.withinTol) {
+        relaxedAttempt.slip.explanation = `${relaxedAttempt.slip.explanation || ''} (Nota: vincolo di varietà rilassato a ${relaxedLimit} selezioni uguali per raggiungere la quota target).`;
+        return relaxedAttempt.slip;
+      }
+    }
+  }
 
-  const closest = beam[0];
-  return buildSlipResultObject(
-    closest.selections,
-    targetOdds,
-    tolerance,
-    `Nota: nessuna combinazione rientra nel ±${Math.round(tolerance * 100)}% di quota ${targetOdds.toFixed(
-      2
-    )}. Viene mostrata la combinazione valida più vicina (${closest.selections.length} ${
-      closest.selections.length === 1 ? 'partita' : 'partite'
-    }, quota ${closest.oddsProduct.toFixed(2)}).`
-  );
+  return attempt ? attempt.slip : null;
 }
 
 /**
  * Ricerca automatica del numero ottimale di partite (1 per Singola, da 2 a 50 per Multipla)
- * senza obbligare l'utente a scegliere N manualmente.
+ * con supporto per la varietà massima di mercato.
  */
 export function findBestBettingSlipAuto(
   candidatePool: CandidateSelection[],
   targetOdds: number,
   riskLevel: number,
   betType: BetTypeKey,
-  tolerance: number = DEFAULT_TARGET_TOLERANCE
+  tolerance: number = DEFAULT_TARGET_TOLERANCE,
+  maxSameMarket?: number
 ): BettingSlipResult | null {
   if (candidatePool.length === 0) return null;
 
@@ -510,8 +591,7 @@ export function findBestBettingSlipAuto(
   if (distinctEventsCount === 0) return null;
 
   if (distinctEventsCount === 1) {
-    // Se c'è solo 1 evento disponibile in assoluto, restituiamo il miglior singolo avvisando
-    const singleFallback = findBestBettingSlip(candidatePool, targetOdds, 1, riskLevel, tolerance);
+    const singleFallback = findBestBettingSlip(candidatePool, targetOdds, 1, riskLevel, tolerance, maxSameMarket);
     if (singleFallback) {
       singleFallback.explanation =
         'Nota: è stato trovato 1 solo evento compatibile nella finestra scelta.';
@@ -523,7 +603,6 @@ export function findBestBettingSlipAuto(
   const theoreticalMinN = Math.max(2, Math.ceil(Math.log(targetOdds) / Math.log(rule.maxOdds)));
   const startN = Math.min(maxN, theoreticalMinN);
 
-  // Calcoliamo anche la taglia N realistica basata sulle quote massime effettivamente presenti nel pool
   const maxEventOddsMap = new Map<string, number>();
   for (const c of candidatePool) {
     const prev = maxEventOddsMap.get(c.eventId) || 0;
@@ -540,17 +619,24 @@ export function findBestBettingSlipAuto(
     Math.max(2, Math.floor(Math.log(targetOdds) / Math.log(Math.max(1.08, avgTopEventOdds))))
   );
 
-  // Esploriamo i valori di N tra startN e il range realistico
   const candidateNs = new Set<number>();
-  const upperExploreN = Math.min(maxN, Math.max(startN + 7, realisticMinN + 5));
-  for (let n = startN; n <= upperExploreN; n++) {
-    candidateNs.add(n);
+  const optimalN = Math.max(
+    2,
+    Math.round(Math.log(targetOdds) / Math.log(Math.max(1.20, Math.min(rule.maxOdds, avgTopEventOdds))))
+  );
+  for (let offset = -1; offset <= 2; offset++) {
+    const candidate = optimalN + offset;
+    if (candidate >= 2 && candidate <= maxN) {
+      candidateNs.add(candidate);
+    }
   }
-  candidateNs.add(maxN);
+  if (candidateNs.size === 0) {
+    candidateNs.add(Math.min(maxN, Math.max(2, startN)));
+  }
 
   const validSlips: BettingSlipResult[] = [];
   for (const n of candidateNs) {
-    const slip = findBestBettingSlip(candidatePool, targetOdds, n, riskLevel, tolerance);
+    const slip = findBestBettingSlip(candidatePool, targetOdds, n, riskLevel, tolerance, maxSameMarket);
     if (slip) {
       validSlips.push(slip);
     }
@@ -558,7 +644,6 @@ export function findBestBettingSlipAuto(
 
   if (validSlips.length === 0) return null;
 
-  // Preferisci le schedine che centrano la tolleranza ±8% e hanno la probabilità combinata/EV migliore
   const withinTol = validSlips.filter((s) => s.withinTolerance);
   const alpha = (Math.max(1, Math.min(10, riskLevel)) - 1) / 9;
 
@@ -571,7 +656,6 @@ export function findBestBettingSlipAuto(
     return withinTol[0];
   }
 
-  // Altrimenti restituisci quella con quota totale più vicina a targetOdds
   validSlips.sort((a, b) => {
     const dA = Math.abs(Math.log(a.totalOdds) - Math.log(targetOdds));
     const dB = Math.abs(Math.log(b.totalOdds) - Math.log(targetOdds));
@@ -580,12 +664,6 @@ export function findBestBettingSlipAuto(
   return validSlips[0];
 }
 
-/**
- * Controlla se con lo sport scelto non è possibile raggiungere la quota desiderata Q
- * con il livello di rischio R (es. quota troppo alta e rischio troppo basso per le partite
- * disponibili in quel singolo sport) e se quindi occorre chiedere il permesso all'utente
- * di espandere la schedina a più sport.
- */
 export function evaluateMultiSportPermissionNeeded(
   candidatePool: CandidateSelection[],
   targetOdds: number,
@@ -607,7 +685,6 @@ export function evaluateMultiSportPermissionNeeded(
   const rule = getRiskRule(riskLevel);
   const minEventsNeeded = Math.max(2, Math.ceil(Math.log(targetOdds) / Math.log(rule.maxOdds)));
 
-  // Calcoliamo la quota massima raggiungibile prendendo la quota più alta valida per ciascun evento distinto (max 50 eventi)
   const maxOddsByEvent = new Map<string, number>();
   for (const sel of candidatePool) {
     const prev = maxOddsByEvent.get(sel.eventId) || 0;

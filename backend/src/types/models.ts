@@ -1,8 +1,12 @@
 import { z } from 'zod';
+import { CompetitionType } from '../config/competitionsCatalog.js';
 
+export type { CompetitionType } from '../config/competitionsCatalog.js';
 export type SportKey = 'football' | 'f1' | 'tennis';
-export type TimeWindowKey = 'today' | 'hours48' | 'days7';
+export type TimeWindowKey = 'today' | 'hours48' | 'days7' | 'days14';
 export type BetTypeKey = 'single' | 'multiple';
+export type DiversityModeKey = 'auto' | 'high' | 'normal' | 'none';
+
 export type MarketGroupKey =
   | '1x2_dc'
   | 'under_over'
@@ -33,22 +37,29 @@ export const AnalyzeRequestSchema = z.object({
   targetOdds: z.number().min(1.10).max(3000),
   riskLevel: z.number().int().min(1).max(11),
   numEvents: z.number().int().min(1).max(50).optional(),
-  timeWindow: z.enum(['today', 'hours48', 'days7']).default('hours48'),
+  timeWindow: z.enum(['today', 'hours48', 'days7', 'days14']).default('hours48'),
   tolerance: z.number().min(0.01).max(0.30).optional(),
-  allowedMarketGroups: z.array(z.enum(MARKET_GROUP_KEYS)).optional()
+  allowedMarketGroups: z.array(z.enum(MARKET_GROUP_KEYS)).optional(),
+  competitions: z.array(z.string()).optional(),
+  diversityMode: z.enum(['auto', 'high', 'normal', 'none']).optional().default('auto'),
+  maxSameMarketSelection: z.number().int().min(1).max(10).optional(),
+  snaiRealOddsOverrides: z.record(z.string(), z.number().positive()).optional()
 });
 
 export type AnalyzeRequest = z.infer<typeof AnalyzeRequestSchema>;
 
-// Schema rigoroso della Sezione 11 per l'output della stima AI
+// Schema rigoroso per l'output della stima AI per evento (Stadio A)
 export const AIEstimateSchema = z.object({
   event_id: z.string(),
   market: z.string(),
   selection: z.string(),
+  player_name: z.string().optional(),
   p_ai: z.number().min(0.01).max(0.99),
   confidence: z.number().min(0).max(1),
   key_factors: z.array(z.string()).max(6),
-  red_flags: z.array(z.string()).max(6)
+  red_flags: z.array(z.string()).max(6),
+  data_gaps: z.array(z.string()).optional().default([]),
+  sources: z.array(z.string()).optional().default([])
 });
 
 export type AIEstimate = z.infer<typeof AIEstimateSchema>;
@@ -59,6 +70,24 @@ export const AIBatchEventEstimateSchema = z.object({
 });
 
 export type AIBatchEventEstimate = z.infer<typeof AIBatchEventEstimateSchema>;
+
+// Schema per la revisione della schedina (Stadio B)
+export const SlipReviewSchema = z.object({
+  verdict: z.enum(['ok', 'attenzione', 'sconsigliata']),
+  warnings: z.array(z.string()),
+  weakestLegId: z.string().optional(),
+  suggestedSwap: z
+    .object({
+      removeSelectionId: z.string(),
+      suggestedAlternative: z.string(),
+      reason: z.string()
+    })
+    .optional(),
+  recommendedMaxSameMarket: z.number().int().min(1).max(10).optional(),
+  diversityRationale: z.string().optional()
+});
+
+export type SlipReview = z.infer<typeof SlipReviewSchema>;
 
 export interface RawOutcomeOdds {
   selection: string;
@@ -71,6 +100,7 @@ export interface RawMarketOdds {
   marketName: string;
   line?: number;
   outcomes: RawOutcomeOdds[];
+  isModelDerived?: boolean;
 }
 
 export interface RawSportEvent {
@@ -118,6 +148,7 @@ export interface CandidateSelection {
   effectiveOdds: number;
   pMarket: number;
   marginUnadjusted: boolean;
+  sourceType: 'market' | 'model'; // Sezione 6.2
   pAi?: number;
   aiConfidence?: number;
   pFinal: number;
@@ -127,6 +158,8 @@ export interface CandidateSelection {
   estimationMode: 'ai_plus_market' | 'market_only';
   keyFactors: string[];
   redFlags: string[];
+  dataGaps?: string[];
+  sources?: string[];
 }
 
 export interface EventAIContextPayload {
@@ -144,6 +177,7 @@ export interface EventAIContextPayload {
     line?: number;
     effectiveOdds: number;
     pMarket: number;
+    sourceType?: 'market' | 'model';
   }>;
 }
 
@@ -180,6 +214,15 @@ export interface BettingSlipResult {
   lowProbabilityWarning: boolean;
   negativeEvNotice: string | null;
   explanation?: string;
+  slipReview?: SlipReview; // Stadio B
+  diversityApplied?: {
+    mode: DiversityModeKey;
+    limit: number;
+    maxFound: number;
+    rationale?: string;
+    wasRelaxed?: boolean;
+  };
+  sameModelWarning?: string;
 }
 
 export interface CompetitionCoverageInfo {
@@ -191,4 +234,27 @@ export interface CompetitionCoverageInfo {
   coveredCompetitions: string[];
   uncoveredNote: string;
   dailyRequestsLimitInfo: string;
+}
+
+export interface CompetitionItem {
+  id: string;
+  name: string;
+  country: string;
+  type: CompetitionType;
+  eventsCount: number;
+  sport: SportKey;
+}
+
+export interface NormalizedFixture {
+  id: string;
+  competitionId: string;
+  competitionName: string;
+  country: string;
+  type: CompetitionType;
+  homeTeam: string;
+  awayTeam: string;
+  kickoffUTC: string;
+  status: 'scheduled' | 'live' | 'finished';
+  sources: string[];
+  fetchedAt: string;
 }

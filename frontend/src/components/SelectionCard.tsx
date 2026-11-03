@@ -8,7 +8,11 @@ import {
   RotateCcw,
   CircleDot,
   Flag,
-  Activity
+  Activity,
+  AlertCircle,
+  HelpCircle,
+  FileText,
+  Trophy
 } from 'lucide-react';
 import { CandidateSelection } from '../config/riskConfig';
 
@@ -52,6 +56,9 @@ export const SelectionCard: React.FC<SelectionCardProps> = ({
     minute: '2-digit'
   });
 
+  const isModelDerived = selection.sourceType === 'model';
+  const hasRealSnaiOverride = selection.snaiRealOdds !== undefined;
+
   const handleSnaiInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const raw = e.target.value;
     setInputVal(raw);
@@ -82,7 +89,10 @@ export const SelectionCard: React.FC<SelectionCardProps> = ({
             <SportIcon size={13} />
             <span>{sportInfo.label}</span>
           </span>
-          <span className="csc-comp">{selection.competitionName}</span>
+          <span className="csc-comp">
+            <Trophy size={11} aria-hidden="true" />
+            <span>{selection.competitionName || 'Calcio'}</span>
+          </span>
         </div>
 
         <div className="csc-meta-right">
@@ -101,7 +111,7 @@ export const SelectionCard: React.FC<SelectionCardProps> = ({
               </>
             ) : (
               <>
-                <BarChart3 size={11} aria-hidden="true" /> Mercato
+                <BarChart3 size={11} aria-hidden="true" /> Solo Mercato
               </>
             )}
           </span>
@@ -115,6 +125,15 @@ export const SelectionCard: React.FC<SelectionCardProps> = ({
           <div className="csc-pick-inline">
             <span className="csc-market-name">{selection.market}:</span>
             <strong className="csc-pick-value">{selection.selection}</strong>
+            {isModelDerived ? (
+              <span className="csc-source-pill model">
+                Stima da modello
+              </span>
+            ) : (
+              <span className="csc-source-pill market">
+                Quota mercato
+              </span>
+            )}
             {selection.marginUnadjusted && (
               <span className="csc-unadjusted-pill">margine non depurato</span>
             )}
@@ -130,7 +149,9 @@ export const SelectionCard: React.FC<SelectionCardProps> = ({
       {/* Riga Valori: Quota Mercato, Quota SNAI Reale (override), EV */}
       <div className="csc-metrics-bar">
         <div className="csc-metric-item">
-          <span className="csc-metric-label">Quota stimata</span>
+          <span className="csc-metric-label">
+            {isModelDerived ? 'Quota modello' : 'Quota mercato'}
+          </span>
           <strong className="csc-metric-val tabular-nums">
             {selection.bookmakerOdds.toFixed(2)}
           </strong>
@@ -170,13 +191,22 @@ export const SelectionCard: React.FC<SelectionCardProps> = ({
 
         <div className="csc-metric-item">
           <span className="csc-metric-label">Valore (EV)</span>
-          <strong
-            className={`csc-metric-val tabular-nums ${
-              selection.ev >= 0 ? 'ev-pos' : 'ev-neg'
-            }`}
-          >
-            {evPct >= 0 ? `+${evPct.toFixed(1)}%` : `${evPct.toFixed(1)}%`}
-          </strong>
+          {isModelDerived && !hasRealSnaiOverride ? (
+            <span
+              className="text-xs text-amber-300 font-medium"
+              title="Per quote stimate dal modello matematico, l'EV è solo indicativo finché non inserisci la quota reale SNAI"
+            >
+              Indicativo (modello)
+            </span>
+          ) : (
+            <strong
+              className={`csc-metric-val tabular-nums ${
+                selection.ev >= 0 ? 'ev-pos' : 'ev-neg'
+              }`}
+            >
+              {evPct >= 0 ? `+${evPct.toFixed(1)}%` : `${evPct.toFixed(1)}%`}
+            </strong>
+          )}
         </div>
       </div>
 
@@ -198,32 +228,74 @@ export const SelectionCard: React.FC<SelectionCardProps> = ({
               <span>Probabilità mercato depurato:</span>
               <strong className="tabular-nums">{marketPct.toFixed(1)}%</strong>
             </div>
-            <div className="csc-compare-bar">
-              <div
-                className="csc-compare-fill"
-                style={{ width: `${Math.min(100, Math.max(4, probPct))}%` }}
-              />
+
+            {selection.pAi !== undefined && (
+              <div className="csc-compare-row">
+                <span>Stima Gemini AI (ponderata):</span>
+                <strong className="tabular-nums">
+                  {(selection.pAi * 100).toFixed(1)}%
+                  {selection.aiConfidence !== undefined && (
+                    <span className="csc-conf-badge">
+                      confidenza {Math.round(selection.aiConfidence * 100)}%
+                    </span>
+                  )}
+                </strong>
+              </div>
+            )}
+
+            <div className="csc-compare-row final">
+              <span>Probabilità finale combinata:</span>
+              <strong className="tabular-nums">{probPct.toFixed(1)}%</strong>
             </div>
           </div>
 
-          <div className="csc-why-cols">
-            <div>
-              <span className="csc-why-title pos">Fattori a favore</span>
-              <ul className="csc-why-ul">
-                {selection.keyFactors.slice(0, 3).map((kf, i) => (
-                  <li key={i}>{kf}</li>
+          {selection.keyFactors.length > 0 && (
+            <div className="csc-factors-block">
+              <span className="csc-block-title">Punti di forza individuati dall&apos;AI:</span>
+              <ul className="csc-factors-list">
+                {selection.keyFactors.map((f, i) => (
+                  <li key={i}>{f}</li>
                 ))}
               </ul>
             </div>
-            <div>
-              <span className="csc-why-title warn">Note di rischio</span>
-              <ul className="csc-why-ul">
-                {selection.redFlags.slice(0, 3).map((rf, i) => (
+          )}
+
+          {selection.redFlags && selection.redFlags.length > 0 && (
+            <div className="csc-factors-block red-flags">
+              <span className="csc-block-title">Fattori di rischio da monitorare:</span>
+              <ul className="csc-factors-list">
+                {selection.redFlags.map((rf, i) => (
                   <li key={i}>{rf}</li>
                 ))}
               </ul>
             </div>
-          </div>
+          )}
+
+          {selection.dataGaps && selection.dataGaps.length > 0 && (
+            <div className="csc-factors-block data-gaps">
+              <span className="csc-subblock-title">
+                <HelpCircle size={13} /> Dati mancanti o incerti:
+              </span>
+              <ul className="csc-subblock-list">
+                {selection.dataGaps.map((dg, i) => (
+                  <li key={i}>{dg}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {selection.sources && selection.sources.length > 0 && (
+            <div className="csc-factors-block sources">
+              <span className="csc-subblock-title">
+                <FileText size={13} /> Fonti consultate:
+              </span>
+              <ul className="csc-subblock-list">
+                {selection.sources.map((src, i) => (
+                  <li key={i}>{src}</li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
       )}
     </article>

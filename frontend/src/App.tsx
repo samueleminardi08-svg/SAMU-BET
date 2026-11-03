@@ -4,6 +4,8 @@ import {
   BettingSlipResult,
   CandidateSelection,
   CompetitionCoverageInfo,
+  CompetitionItem,
+  DiversityModeKey,
   FeasibilityCheckResult,
   MarketGroupKey,
   MultiSportPromptInfo,
@@ -17,6 +19,7 @@ import {
 import {
   BackendStatusResponse,
   fetchBackendStatus,
+  fetchCompetitions,
   runBackendAnalysis
 } from './services/apiClient';
 import {
@@ -35,18 +38,35 @@ import { SearchForm } from './components/SearchForm';
 import { ResultsView } from './components/ResultsView';
 import { LocalAISettings } from './components/LocalAISettings';
 import { CoveredCompetitionsModal } from './components/CoveredCompetitions';
+import { CompetitionsPicker } from './components/CompetitionsPicker';
 
 export const App: React.FC = () => {
   const [activeScreen, setActiveScreen] = useState<'form' | 'results' | 'settings'>('form');
   const [competitionsModalOpen, setCompetitionsModalOpen] = useState(false);
+  const [competitionsPickerOpen, setCompetitionsPickerOpen] = useState(false);
 
-  // Parametri Form (Singola/Multipla all'inizio + Sport + Quota max 3000 + Rischio 1-10 + Mercati SNAI)
+  // Parametri Form
   const [betType, setBetType] = useState<BetTypeKey>('multiple');
   const [sports, setSports] = useState<SportKey[]>(['football']);
   const [targetOdds, setTargetOdds] = useState<number>(5.0);
   const [riskLevel, setRiskLevel] = useState<number>(5);
   const [timeWindow, setTimeWindow] = useState<TimeWindowKey>('hours48');
   const [allowedMarketGroups, setAllowedMarketGroups] = useState<MarketGroupKey[]>([]);
+  const [diversityMode, setDiversityMode] = useState<DiversityModeKey>('auto');
+
+  // Competizioni e Coppe
+  const [availableCompetitions, setAvailableCompetitions] = useState<CompetitionItem[]>([]);
+  const [selectedCompetitionIds, setSelectedCompetitionIds] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('samubet_selected_competitions');
+      if (!saved) return [];
+      const parsed = JSON.parse(saved);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  });
+  const [calendarUpdatedTimestamp, setCalendarUpdatedTimestamp] = useState<string>('');
 
   // Stato Backend & Risultati
   const [backendStatus, setBackendStatus] = useState<BackendStatusResponse | null>(null);
@@ -64,7 +84,7 @@ export const App: React.FC = () => {
   const [noEventsMessage, setNoEventsMessage] = useState<string | undefined>(undefined);
   const [isDemoData, setIsDemoData] = useState<boolean>(false);
 
-  // Stato AI Locale (Unsloth Bridge)
+  // Stato AI Locale
   const [bridgeSettings, setBridgeSettings] = useState<BridgeSettings>(() => loadBridgeSettings());
   const [aiStatus, setAiStatus] = useState<BridgeHealthStatus>({
     reachable: false,
@@ -101,6 +121,27 @@ export const App: React.FC = () => {
       });
     }
   }, []);
+
+  // Ricarica lista competizioni al variare della finestra temporale
+  useEffect(() => {
+    fetchCompetitions(timeWindow).then((data) => {
+      if (data && data.competitions && data.competitions.length > 0) {
+        setAvailableCompetitions(data.competitions);
+        if (data.calendarUpdatedTimestamp) {
+          setCalendarUpdatedTimestamp(data.calendarUpdatedTimestamp);
+        }
+      }
+    });
+  }, [timeWindow]);
+
+  const handleUpdateSelectedCompetitions = (ids: string[]) => {
+    setSelectedCompetitionIds(ids);
+    try {
+      localStorage.setItem('samubet_selected_competitions', JSON.stringify(ids));
+    } catch {
+      // ignore
+    }
+  };
 
   const cancelOngoingAI = () => {
     if (aiAbortRef.current) {
@@ -143,10 +184,19 @@ export const App: React.FC = () => {
         targetOdds,
         riskLevel: effRiskLevel,
         timeWindow,
+        competitions: selectedCompetitionIds.includes('__none__')
+          ? ['__none__']
+          : selectedCompetitionIds.length > 0
+          ? selectedCompetitionIds
+          : undefined,
+        diversityMode,
         allowedMarketGroups: allowedMarketGroups.length > 0 ? allowedMarketGroups : undefined
       });
 
       setGeneratedAt(res.generatedAt);
+      if (res.calendarUpdatedTimestamp) {
+        setCalendarUpdatedTimestamp(res.calendarUpdatedTimestamp);
+      }
       setFeasibility(res.feasibility);
       setMultiSportPrompt(res.multiSportPrompt);
       setAllSelections(res.allCandidateSelections);
@@ -258,7 +308,6 @@ export const App: React.FC = () => {
     }
   };
 
-  // Override manuale "Quota SNAI reale" con ricalcolo istantaneo
   const handleUpdateSnaiOdds = (selectionId: string, newSnaiOdds?: number) => {
     const updatedAll = allSelections.map((sel) => {
       if (sel.id !== selectionId) return sel;
@@ -276,7 +325,6 @@ export const App: React.FC = () => {
     setBestSlip(recomputed.bestSlip);
   };
 
-  // Autorizzazione dell'utente a comporre una schedina con più sport
   const handleAuthorizeMultiSport = () => {
     const allThree: SportKey[] = ['football', 'tennis', 'f1'];
     setSports(allThree);
@@ -302,6 +350,8 @@ export const App: React.FC = () => {
         (k.keyName === 'THE_ODDS_API_KEY' || k.keyName === 'FOOTBALL_DATA_API_KEY')
     ).length || 0;
 
+  const activeAiModel = backendStatus?.quota?.aiTelemetry?.activeModel;
+
   return (
     <div className="app-shell">
       <ResponsibleGamingTopBanner />
@@ -314,6 +364,7 @@ export const App: React.FC = () => {
         hasResults={feasibility !== null}
         isDemoData={isDemoData}
         missingRequiredKeysCount={missingRequiredKeysCount}
+        activeAiModel={activeAiModel}
       />
 
       <main className="app-main-content">
@@ -362,12 +413,17 @@ export const App: React.FC = () => {
             timeWindow={timeWindow}
             allowedMarketGroups={allowedMarketGroups}
             loading={loading}
+            selectedCompetitionIds={selectedCompetitionIds}
+            competitions={availableCompetitions}
+            diversityMode={diversityMode}
             onChangeBetType={setBetType}
             onChangeSports={setSports}
             onChangeTargetOdds={setTargetOdds}
             onChangeRiskLevel={setRiskLevel}
             onChangeTimeWindow={setTimeWindow}
             onChangeAllowedMarketGroups={setAllowedMarketGroups}
+            onChangeDiversityMode={setDiversityMode}
+            onOpenCompetitionsModal={() => setCompetitionsPickerOpen(true)}
             onSubmit={() => executeAnalysis()}
           />
         )}
@@ -403,11 +459,23 @@ export const App: React.FC = () => {
         )}
       </main>
 
+      {/* Modal Fonti & API */}
       <CoveredCompetitionsModal
         open={competitionsModalOpen}
         onClose={() => setCompetitionsModalOpen(false)}
         backendStatus={backendStatus}
         coveredCompetitions={coveredCompetitions}
+      />
+
+      {/* Modal Selezione Campionati & Coppe con conteggio partite */}
+      <CompetitionsPicker
+        isOpen={competitionsPickerOpen}
+        onClose={() => setCompetitionsPickerOpen(false)}
+        competitions={availableCompetitions}
+        selectedCompetitionIds={selectedCompetitionIds}
+        onChangeSelected={handleUpdateSelectedCompetitions}
+        calendarUpdatedTimestamp={calendarUpdatedTimestamp}
+        timeWindow={timeWindow}
       />
 
       <ResponsibleGamingFooter />

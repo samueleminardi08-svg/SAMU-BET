@@ -18,11 +18,9 @@ import {
   buildCandidatePool,
   checkAutoSlipFeasibility,
   checkSlipFeasibility,
-  evaluateMultiSportPermissionNeeded,
   findBestBettingSlip,
   findBestBettingSlipAuto
 } from './engine/slipBuilder.js';
-import { getF1EventStats } from './providers/f1StatsProvider.js';
 import { getFootballEventStats } from './providers/footballStatsProvider.js';
 import {
   analyzeEventsBatchWithGemini,
@@ -31,16 +29,20 @@ import {
   getGeminiConfig,
   updateGeminiConfig
 } from './providers/geminiProvider.js';
-import { getActiveOddsProvider } from './providers/oddsProvider.js';
-import { getTennisEventStats } from './providers/tennisStatsProvider.js';
+import { getActiveOddsProvider, getWindowEndTimestamp } from './providers/oddsProvider.js';
+import { defaultFixturesProvider, formatRomeDateTime } from './providers/fixturesProvider.js';
+import { reviewSlipWithGemini } from './ai/slipReview.js';
 import { fetchSportRssItems, matchNewsForEvent } from './rss/rssService.js';
 import {
   AnalyzeRequestSchema,
   CandidateSelection,
+  CompetitionItem,
+  CompetitionType,
   EventAIContextPayload,
   MarketGroupKey,
   RssNewsItem,
-  SportKey
+  SportKey,
+  TimeWindowKey
 } from './types/models.js';
 
 dotenv.config({ path: '../.env' });
@@ -99,6 +101,62 @@ app.post('/api/ai/estimate', async (req: Request, res: Response) => {
   }
 });
 
+// Endpoint Calendario & Filtro Competizioni (Sezione 3 & 4)
+app.get('/api/competitions', async (req: Request, res: Response) => {
+  try {
+    const timeWindow = (req.query.timeWindow as TimeWindowKey) || 'hours48';
+    const now = new Date();
+    const to = getWindowEndTimestamp(timeWindow, now);
+    const fixtures = await defaultFixturesProvider.getFixtures({
+      from: now,
+      to
+    });
+
+    const compMap = new Map<
+      string,
+      { id: string; name: string; country: string; type: CompetitionType; count: number }
+    >();
+
+    for (const f of fixtures) {
+      const existing = compMap.get(f.competitionId);
+      if (existing) {
+        existing.count++;
+      } else {
+        compMap.set(f.competitionId, {
+          id: f.competitionId,
+          name: f.competitionName,
+          country: f.country,
+          type: f.type,
+          count: 1
+        });
+      }
+    }
+
+    const competitions: CompetitionItem[] = Array.from(compMap.values())
+      .map((c) => ({
+        id: c.id,
+        name: c.name,
+        country: c.country,
+        type: c.type,
+        eventsCount: c.count,
+        sport: 'football' as const
+      }))
+      .sort((a, b) => {
+        if (b.eventsCount !== a.eventsCount) return b.eventsCount - a.eventsCount;
+        return a.name.localeCompare(b.name);
+      });
+
+    res.json({
+      competitions,
+      calendarUpdatedTimestamp: formatRomeDateTime(new Date()),
+      timeWindow
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Errore nel recupero delle competizioni';
+    res.status(500).json({ error: message });
+  }
+});
+
 app.post('/api/analyze', async (req: Request, res: Response) => {
   try {
     const ip = getClientIp(req);
@@ -127,8 +185,12 @@ app.post('/api/analyze', async (req: Request, res: Response) => {
       riskLevel,
       numEvents,
       timeWindow,
+      competitions,
+      diversityMode = 'auto',
+      maxSameMarketSelection,
       tolerance,
-      allowedMarketGroups
+      allowedMarketGroups,
+      snaiRealOddsOverrides
     } = parsed.data;
 
     const activeMarketFilter =
@@ -228,6 +290,7 @@ app.post('/api/analyze', async (req: Request, res: Response) => {
     if (!feasibility.feasible) {
       res.json({
         generatedAt: new Date().toISOString(),
+        calendarUpdatedTimestamp: formatRomeDateTime(new Date()),
         betType,
         feasibility,
         multiSportPrompt: null,
@@ -246,11 +309,12 @@ app.post('/api/analyze', async (req: Request, res: Response) => {
     // 2. Recupero eventi e quote dal provider attivo (solo Calcio: tutti i campionati e coppe)
     const oddsProvider = getActiveOddsProvider();
     const { events, providerWarnings, coveredCompetitions, isDemoData } =
-      await oddsProvider.fetchEvents(effectiveSports, timeWindow);
+      await oddsProvider.fetchEvents(effectiveSports, timeWindow, competitions);
 
     if (events.length === 0) {
       res.json({
         generatedAt: new Date().toISOString(),
+        calendarUpdatedTimestamp: formatRomeDateTime(new Date()),
         betType,
         feasibility,
         multiSportPrompt: null,
@@ -298,9 +362,20 @@ app.post('/api/analyze', async (req: Request, res: Response) => {
             continue;
           }
           const { pFinal, estimationMode } = computeFinalProbability(out.pMarket);
-          const { ev: expectedValue, edge } = computeEvAndEdge(pFinal, out.medianOdds);
-
           const selectionId = `${ev.id}::${mkt.marketKey}::${out.selection}`;
+
+          let effectiveOdds = out.medianOdds;
+          let snaiRealOddsVal: number | undefined;
+
+          // Se l'utente ha inserito una quota reale SNAI tramite override
+          const overrideVal = snaiRealOddsOverrides ? snaiRealOddsOverrides[selectionId] : undefined;
+          if (typeof overrideVal === 'number') {
+            snaiRealOddsVal = overrideVal;
+            effectiveOdds = overrideVal;
+          }
+
+          const { ev: expectedValue, edge } = computeEvAndEdge(pFinal, effectiveOdds);
+
           const candidateObj: CandidateSelection = {
             id: selectionId,
             eventId: ev.id,
@@ -312,9 +387,11 @@ app.post('/api/analyze', async (req: Request, res: Response) => {
             selection: out.selection,
             line: out.line,
             bookmakerOdds: out.medianOdds,
-            effectiveOdds: out.medianOdds,
+            snaiRealOdds: snaiRealOddsVal,
+            effectiveOdds,
             pMarket: out.pMarket,
             marginUnadjusted: out.marginUnadjusted,
+            sourceType: mkt.isModelDerived ? 'model' : 'market',
             pFinal,
             ev: expectedValue,
             edge,
@@ -396,7 +473,6 @@ app.post('/api/analyze', async (req: Request, res: Response) => {
       // Selezioniamo per ciascuna partita le migliori 8 giocate SNAI diversificate da far analizzare a Gemini AI
       let candidateForAi: CandidateSelection[];
       if (betType === 'single') {
-        // In Singola (senza filtro di rischio): ordiniamo per vicinanza a targetOdds e diversifichiamo i mercati
         const sortedSingle = [...evSelections]
           .filter((s) => s.effectiveOdds >= MIN_SELECTION_ODDS)
           .sort((a, b) => {
@@ -406,9 +482,6 @@ app.post('/api/analyze', async (req: Request, res: Response) => {
           });
         candidateForAi = pickDiverseCandidates(sortedSingle, 8);
       } else if (riskLevel === 11) {
-        // Rischio ULTRA (100% Giudizio IA, nessun limite di quota o probabilità minima):
-        // Scegliamo candidati diversificati lungo diverse fasce di quota per permettere all'IA di costruire
-        // la combinazione ottimale (in 2, 3, 4 o 5 partite) verso targetOdds.
         const allValidUltra = evSelections.filter((s) => s.effectiveOdds >= MIN_SELECTION_ODDS);
         const estEventsUltra = Math.max(
           2,
@@ -443,10 +516,9 @@ app.post('/api/analyze', async (req: Request, res: Response) => {
         ];
         candidateForAi = pickDiverseCandidates(ultraBlended, 8);
       } else {
-        // In Multipla (Rischio 1-10): calcoliamo la quota massima realistica compatibile con riskRule.minProb
         const realisticMaxOdds = Math.min(
           riskRule.maxOdds,
-          1 / Math.max(0.10, riskRule.minProb * 1.045)
+          1 / Math.max(0.1, riskRule.minProb * 1.045)
         );
         const realisticMinEvents = Math.max(
           2,
@@ -511,21 +583,28 @@ app.post('/api/analyze', async (req: Request, res: Response) => {
             selection: s.selection,
             line: s.line,
             effectiveOdds: s.effectiveOdds,
-            pMarket: s.pMarket
+            pMarket: s.pMarket,
+            sourceType: s.sourceType
           }))
         });
       }
     }
 
-    // 5. Esecuzione analisi AI con Google Gemini sui migliori eventi candidati (fino a 24 partite)
-    const maxEventsToAnalyze = Math.min(
-      24,
-      Math.max(16, (feasibility.suggestedMinEvents || 4) + 6)
-    );
-    const contextsToAnalyze = Array.from(eventContextsMap.values()).slice(0, maxEventsToAnalyze);
+    // 5. Esecuzione analisi AI con Google Gemini sui migliori eventi candidati
+    const maxEventsToAnalyze =
+      betType === 'single'
+        ? 4
+        : Math.min(8, Math.max(3, (feasibility.suggestedMinEvents || 3) + 1));
+
+    const sortedContexts = Array.from(eventContextsMap.values()).sort((a, b) => {
+      const bestA = a.candidateSelections[0]?.pMarket ?? 0;
+      const bestB = b.candidateSelections[0]?.pMarket ?? 0;
+      return bestB - bestA;
+    });
+    const contextsToAnalyze = sortedContexts.slice(0, maxEventsToAnalyze);
     const geminiEstimatesByEvent = await analyzeEventsBatchWithGemini(contextsToAnalyze);
 
-    // Helper per sostituire il ruolo generico con il Nome e Cognome individuato dall'IA dalla formazione
+    // Helper per sostituire il ruolo generico con il Nome e Cognome individuato dall'IA
     const GENERIC_ROLE_REGEX =
       /(Centravanti Titolare|Attaccante Esterno|Trequartista \/ Regista|Mediano Titolare)\s*\(([^)]+)\)/i;
 
@@ -560,14 +639,12 @@ app.post('/api/analyze', async (req: Request, res: Response) => {
       return rawSelection;
     };
 
-    // 6. Costruzione esclusiva delle giocate analizzate dall'IA
-    const aiOnlySelections: CandidateSelection[] = [];
+    // 6. Costruzione selezioni: se Gemini ha stime usa 'ai_plus_market', altrimenti fallback 'market_only'
+    const processedSelections: CandidateSelection[] = [];
 
     for (const [eventId, candidateSels] of rawSelectionsByEvent.entries()) {
       const estimates = geminiEstimatesByEvent.get(eventId) || [];
-      if (estimates.length === 0) continue;
-
-      const fallbackEst = estimates[0];
+      const fallbackEst = estimates.length > 0 ? estimates[0] : null;
 
       for (const sel of candidateSels) {
         const directEst =
@@ -590,72 +667,160 @@ app.post('/api/analyze', async (req: Request, res: Response) => {
           directEst?.selection
         );
 
-        const effectivePAi = directEst
-          ? directEst.p_ai
-          : Number(Math.max(0.01, Math.min(0.99, sel.pMarket + 0.01)).toFixed(4));
-        const effectiveConf = directEst ? directEst.confidence : fallbackEst.confidence;
+        let pFinal: number;
+        let pAi: number | undefined;
+        let aiConfidence: number | undefined;
+        let estimationMode: 'ai_plus_market' | 'market_only';
+        let keyFactors: string[];
+        let redFlags: string[];
 
-        const { pFinal: rawPFinal, clampedPAi } = computeFinalProbability(
-          sel.pMarket,
-          effectivePAi,
-          effectiveConf
-        );
-        // In modalità ULTRA (riskLevel === 11), ci affidiamo al giudizio dell'IA (p_ai) con peso maggiorato
-        const ultraPFinal = directEst
-          ? Number((0.35 * sel.pMarket + 0.65 * directEst.p_ai).toFixed(4))
-          : rawPFinal;
-        const pFinal =
-          riskLevel === 11
-            ? ultraPFinal
-            : betType === 'multiple' && sel.pMarket >= riskRule.minProb - 0.01
-            ? Math.max(riskRule.minProb, rawPFinal)
+        if (directEst || fallbackEst) {
+          const activeEst = directEst || fallbackEst!;
+          const effectivePAi = directEst
+            ? directEst.p_ai
+            : Number(Math.max(0.01, Math.min(0.99, sel.pMarket + 0.01)).toFixed(4));
+          const effectiveConf = directEst ? directEst.confidence : activeEst.confidence;
+
+          const { pFinal: rawPFinal, clampedPAi } = computeFinalProbability(
+            sel.pMarket,
+            effectivePAi,
+            effectiveConf
+          );
+
+          // Fix 2: In modalità ULTRA (riskLevel === 11), vincola clampedPAi a ±10pp da pMarket
+          // e assegna peso 65% ad AI e 35% al mercato
+          const effectiveClampedPAi = clampedPAi ?? sel.pMarket;
+          const ultraPFinal = directEst
+            ? Number((0.35 * sel.pMarket + 0.65 * effectiveClampedPAi).toFixed(4))
             : rawPFinal;
 
-        const effectiveFactors = directEst
-          ? directEst.key_factors
-          : [
-              `Valutazione AI su ${sel.market} (${resolvedSelectionLabel}): probabilità stimata ${(
-                pFinal * 100
-              ).toFixed(1)}% a quota ${sel.effectiveOdds.toFixed(2)}.`,
-              ...fallbackEst.key_factors.slice(0, 2)
-            ];
-        const effectiveFlags = directEst ? directEst.red_flags : fallbackEst.red_flags;
+          // Fix 1: rimosso Math.max(riskRule.minProb, rawPFinal) che gonfiava artificialmente la probabilità
+          pFinal = riskLevel === 11 ? ultraPFinal : rawPFinal;
+          pAi = clampedPAi;
+          aiConfidence = effectiveConf;
+          estimationMode = 'ai_plus_market';
+
+          keyFactors = directEst
+            ? directEst.key_factors
+            : [
+                `Valutazione AI su ${sel.market} (${resolvedSelectionLabel}): probabilità stimata ${(
+                  pFinal * 100
+                ).toFixed(1)}% a quota ${sel.effectiveOdds.toFixed(2)}.`,
+                ...activeEst.key_factors.slice(0, 2)
+              ];
+          redFlags = directEst ? directEst.red_flags : activeEst.red_flags;
+        } else {
+          // Fix 3: Fallback pulito a solo-mercato quando AI non è disponibile
+          pFinal = sel.pMarket;
+          pAi = undefined;
+          aiConfidence = undefined;
+          estimationMode = 'market_only';
+          keyFactors = [
+            `Analisi statistica di mercato fair con rimozione del margine bookmaker (probabilità ${(
+              pFinal * 100
+            ).toFixed(1)}%).`
+          ];
+          redFlags = [
+            'Valutazione qualitativa AI non disponibile per questo evento: basata esclusivamente su quote.'
+          ];
+        }
 
         const { ev: expectedValue, edge } = computeEvAndEdge(pFinal, sel.effectiveOdds);
 
-        aiOnlySelections.push({
+        processedSelections.push({
           ...sel,
           selection: resolvedSelectionLabel,
-          pAi: clampedPAi,
-          aiConfidence: effectiveConf,
+          pAi,
+          aiConfidence,
           pFinal,
           ev: expectedValue,
           edge,
-          estimationMode: 'ai_plus_market',
-          keyFactors: effectiveFactors.slice(0, 4),
+          estimationMode,
+          keyFactors: keyFactors.slice(0, 4),
           redFlags:
-            effectiveFlags.length > 0
-              ? effectiveFlags.slice(0, 4)
-              : ['Verifica sempre le formazioni ufficiali prima del calcio d\'inizio.']
+            redFlags.length > 0
+              ? redFlags.slice(0, 4)
+              : ["Verifica sempre le formazioni ufficiali prima del calcio d'inizio."]
         });
       }
     }
 
-    // 7. Pool candidati e costruzione schedina SOLO con le bet generate dall'IA
+    // 7. Pool candidati e costruzione schedina (Stadio A)
     const { recommendedSingles, topPool } = buildCandidatePool(
-      aiOnlySelections,
+      processedSelections,
       riskLevel,
       betType,
       targetOdds
     );
 
-    const bestSlip =
+    let bestSlip =
       numEvents !== undefined
         ? findBestBettingSlip(topPool, targetOdds, numEvents, riskLevel, effectiveTolerance)
         : findBestBettingSlipAuto(topPool, targetOdds, riskLevel, betType, effectiveTolerance);
 
+    // Stadio B: Calcolo vincolo di varietà ed eventuale beam search diversificata
+    let effectiveSlip = bestSlip;
+
+    if (effectiveSlip && effectiveSlip.selections.length > 0) {
+      const slipSize = effectiveSlip.selections.length;
+      const diversityHardMax = Math.max(2, Math.ceil(slipSize / 2));
+      let effectiveLimit: number | undefined;
+
+      if (diversityMode === 'none') {
+        effectiveLimit = undefined;
+      } else if (diversityMode === 'high') {
+        effectiveLimit = 2;
+      } else if (diversityMode === 'normal') {
+        effectiveLimit = 3;
+      } else if (maxSameMarketSelection !== undefined) {
+        effectiveLimit = Math.max(1, maxSameMarketSelection);
+      } else {
+        // Modalità 'auto': max 3 selezioni dello stesso mercato
+        effectiveLimit = Math.max(1, Math.min(diversityHardMax, 3));
+      }
+
+      // Se il limite è attivo e inferiore al numero di selezioni, applica beam search con vincolo
+      if (effectiveLimit !== undefined && effectiveLimit < slipSize) {
+        const diverseSlip =
+          numEvents !== undefined
+            ? findBestBettingSlip(
+                topPool,
+                targetOdds,
+                numEvents,
+                riskLevel,
+                effectiveTolerance,
+                effectiveLimit
+              )
+            : findBestBettingSlipAuto(
+                topPool,
+                targetOdds,
+                riskLevel,
+                betType,
+                effectiveTolerance,
+                effectiveLimit
+              );
+
+        if (diverseSlip) {
+          effectiveSlip = diverseSlip;
+          effectiveSlip.diversityApplied = {
+            mode: diversityMode,
+            limit: effectiveLimit,
+            maxFound: effectiveLimit
+          };
+        }
+      }
+
+      // Esecuzione review AI qualitativa una sola volta sulla schedina finale effettiva
+      const review = await reviewSlipWithGemini(effectiveSlip, targetOdds, riskLevel);
+      if (review) {
+        effectiveSlip.slipReview = review;
+      }
+      bestSlip = effectiveSlip;
+    }
+
     res.json({
       generatedAt: new Date().toISOString(),
+      calendarUpdatedTimestamp: formatRomeDateTime(new Date()),
       betType,
       feasibility,
       multiSportPrompt: null,
@@ -667,8 +832,8 @@ app.post('/api/analyze', async (req: Request, res: Response) => {
       providerWarnings,
       isDemoData,
       noEventsMessage:
-        aiOnlySelections.length === 0
-          ? 'Impossibile generare pronostici AI in questo momento. Verifica che la chiave Google Gemini sia attiva.'
+        processedSelections.length === 0
+          ? 'Nessuna selezione disponibile per i criteri specificati.'
           : undefined,
       envReport: startupReport,
       quotaStatus: sharedCache.getQuotaStatus()

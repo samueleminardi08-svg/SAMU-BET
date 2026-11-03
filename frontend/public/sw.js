@@ -1,5 +1,13 @@
-const CACHE_NAME = 'samu-bet-pwa-v2';
-const STATIC_ASSETS = ['./', './index.html', './manifest.json', './icon-192.svg', './icon-512.svg'];
+const CACHE_NAME = 'samu-bet-pwa-v3';
+const STATIC_ASSETS = [
+  './',
+  './index.html',
+  './manifest.json',
+  './favicon.png',
+  './apple-touch-icon.png',
+  './icon-192.png',
+  './icon-512.png'
+];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -23,4 +31,3 @@ self.addEventListener('fetch', (event) => {
     fetch(event.request).catch(() => caches.match(event.request))
   );
 });
-

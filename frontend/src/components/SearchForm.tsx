@@ -10,10 +10,15 @@ import {
   ChevronDown,
   ChevronUp,
   Check,
-  RotateCcw
+  RotateCcw,
+  Trophy,
+  Sliders,
+  AlertCircle
 } from 'lucide-react';
 import {
   BetTypeKey,
+  CompetitionItem,
+  DiversityModeKey,
   MARKET_GROUP_OPTIONS,
   MAX_MULTIPLE_EVENTS,
   MAX_TARGET_ODDS,
@@ -31,19 +36,32 @@ interface SearchFormProps {
   timeWindow: TimeWindowKey;
   allowedMarketGroups: MarketGroupKey[];
   loading: boolean;
+  selectedCompetitionIds: string[];
+  competitions: CompetitionItem[];
+  diversityMode: DiversityModeKey;
   onChangeBetType: (bt: BetTypeKey) => void;
   onChangeSports: (sports: SportKey[]) => void;
   onChangeTargetOdds: (q: number) => void;
   onChangeRiskLevel: (r: number) => void;
   onChangeTimeWindow: (w: TimeWindowKey) => void;
   onChangeAllowedMarketGroups: (groups: MarketGroupKey[]) => void;
+  onChangeDiversityMode: (mode: DiversityModeKey) => void;
+  onOpenCompetitionsModal: () => void;
   onSubmit: () => void;
 }
 
 const WINDOW_OPTIONS: Array<{ key: TimeWindowKey; label: string }> = [
   { key: 'today', label: 'Oggi' },
   { key: 'hours48', label: '48 ore' },
-  { key: 'days7', label: '7 giorni' }
+  { key: 'days7', label: '7 giorni' },
+  { key: 'days14', label: '14 giorni' }
+];
+
+const DIVERSITY_OPTIONS: Array<{ key: DiversityModeKey; label: string; sub: string }> = [
+  { key: 'auto', label: 'Auto', sub: 'Decide l\'AI' },
+  { key: 'high', label: 'Alta', sub: 'Max 2 uguali' },
+  { key: 'normal', label: 'Normale', sub: 'Max 3 uguali' },
+  { key: 'none', label: 'Nessun limite', sub: 'Libera' }
 ];
 
 export const SearchForm: React.FC<SearchFormProps> = ({
@@ -53,11 +71,16 @@ export const SearchForm: React.FC<SearchFormProps> = ({
   timeWindow,
   allowedMarketGroups,
   loading,
+  selectedCompetitionIds,
+  competitions,
+  diversityMode,
   onChangeBetType,
   onChangeTargetOdds,
   onChangeRiskLevel,
   onChangeTimeWindow,
   onChangeAllowedMarketGroups,
+  onChangeDiversityMode,
+  onOpenCompetitionsModal,
   onSubmit
 }) => {
   const [marketsMenuOpen, setMarketsMenuOpen] = useState(false);
@@ -107,18 +130,92 @@ export const SearchForm: React.FC<SearchFormProps> = ({
 
   return (
     <form className="clean-form-card" onSubmit={handleFormSubmit}>
-      {/* Intestazione Calcio Mondiale + AI */}
+      {/* Intestazione Calcio Mondiale + Pill rapida */}
       <div className="clean-field-block" style={{ paddingBottom: '4px' }}>
         <div className="field-header-inline">
           <span className="clean-step-label">
             <Globe size={15} aria-hidden="true" />
-            Calcio Mondiale — Pronostici Esclusivi Gemini AI
+            Calcio Mondiale — Gemini AI
           </span>
-          <span className="field-hint-pill">Tutti i Campionati e Coppe</span>
+          <button
+            type="button"
+            onClick={onOpenCompetitionsModal}
+            className="clean-competitions-pill"
+          >
+            <Trophy size={14} />
+            <span>
+              {selectedCompetitionIds.includes('__none__')
+                ? 'Nessuna'
+                : selectedCompetitionIds.length === 0
+                ? 'Tutte le Competizioni'
+                : `${selectedCompetitionIds.length} competizioni`}
+            </span>
+          </button>
         </div>
       </div>
 
-      {/* 1. TIPO DI SCHEDINA (ALL'INIZIO DI TUTTO) */}
+      {/* SELETTORE PROMINENTE CAMPIONATI & COPPE */}
+      <div className="clean-field-block">
+        <div className="field-header-inline">
+          <span className="clean-step-label">
+            <Trophy size={15} aria-hidden="true" />
+            Campionati &amp; Coppe
+          </span>
+          <span className="field-hint-pill">
+            {competitions.length > 0
+              ? `${competitions.reduce((acc, c) => acc + c.eventsCount, 0)} partite in calendario`
+              : 'Filtro competizioni'}
+          </span>
+        </div>
+
+        <button
+          type="button"
+          onClick={onOpenCompetitionsModal}
+          className="competitions-selector-btn"
+          aria-label="Apri filtro campionati e coppe"
+        >
+          <div className="csb-left">
+            <div className="csb-icon-wrap">
+              <Trophy size={18} />
+            </div>
+            <div className="csb-text">
+              <strong className="csb-title">
+                {selectedCompetitionIds.includes('__none__')
+                  ? 'Nessuna competizione selezionata'
+                  : selectedCompetitionIds.length === 0
+                  ? 'Tutte le Competizioni & Coppe mondiali'
+                  : `${selectedCompetitionIds.length} competizioni selezionate`}
+              </strong>
+              <span className="csb-sub">
+                {selectedCompetitionIds.includes('__none__')
+                  ? 'Clicca per selezionare almeno una competizione'
+                  : selectedCompetitionIds.length === 0
+                  ? 'Champions League, Serie A, Coppe europee, Premier e altri tornei (Clicca per filtrare)'
+                  : competitions
+                      .filter((c) => selectedCompetitionIds.includes(c.id))
+                      .map((c) => c.name)
+                      .slice(0, 3)
+                      .join(', ') +
+                    (selectedCompetitionIds.length > 3
+                      ? ` + altre ${selectedCompetitionIds.length - 3}`
+                      : '')}
+              </span>
+            </div>
+          </div>
+          <div className="csb-right">
+            <span className="csb-badge">
+              {selectedCompetitionIds.includes('__none__')
+                ? '0 attive'
+                : selectedCompetitionIds.length === 0
+                ? 'Tutte attive'
+                : `${selectedCompetitionIds.length}/${competitions.length}`}
+            </span>
+            <ChevronDown size={18} />
+          </div>
+        </button>
+      </div>
+
+      {/* 1. TIPO DI SCHEDINA */}
       <div className="clean-field-block">
         <span className="clean-step-label">
           <Layers size={15} aria-hidden="true" />
@@ -223,7 +320,7 @@ export const SearchForm: React.FC<SearchFormProps> = ({
         </div>
       </div>
 
-      {/* 3. LIVELLO DI RISCHIO (1-10 + ULTRA) — SOLO PER LE MULTIPLE */}
+      {/* 3. LIVELLO DI RISCHIO — SOLO PER LE MULTIPLE */}
       {betType === 'multiple' && (
         <div className="clean-field-block">
           <div className="field-header-inline">
@@ -301,12 +398,38 @@ export const SearchForm: React.FC<SearchFormProps> = ({
         </div>
       )}
 
-      {/* TIPI DI BET SNAI (MENÙ A TENDINA) */}
+      {/* 4. VARIETÀ MERCATI SCHEDINA (SOLO MULTIPLE) */}
+      {betType === 'multiple' && (
+        <div className="clean-field-block">
+          <div className="field-header-inline">
+            <span className="clean-step-label">
+              <Sliders size={15} aria-hidden="true" />
+              4. Varietà mercati schedina
+            </span>
+            <span className="field-hint-pill">Diversificazione mercati</span>
+          </div>
+          <div className="diversity-grid">
+            {DIVERSITY_OPTIONS.map((opt) => (
+              <button
+                key={opt.key}
+                type="button"
+                onClick={() => onChangeDiversityMode(opt.key)}
+                className={`diversity-option-btn ${diversityMode === opt.key ? 'active' : ''}`}
+              >
+                <span className="diversity-btn-title">{opt.label}</span>
+                <span className="diversity-btn-sub">{opt.sub}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* TIPI DI BET SNAI */}
       <div className="clean-field-block">
         <div className="field-header-inline">
           <span className="clean-step-label">
             <SlidersHorizontal size={15} aria-hidden="true" />
-            {betType === 'single' ? '3. Tipi di bet nella schedina' : '4. Tipi di bet nella schedina'}
+            {betType === 'single' ? '3. Tipi di bet nella schedina' : '5. Tipi di bet nella schedina'}
           </span>
           {allowedMarketGroups.length > 0 && (
             <button
@@ -393,7 +516,7 @@ export const SearchForm: React.FC<SearchFormProps> = ({
       <div className="clean-field-block">
         <span className="clean-step-label">
           <Calendar size={15} aria-hidden="true" />
-          {betType === 'single' ? '4. Finestra temporale' : '5. Finestra temporale'}
+          {betType === 'single' ? '4. Finestra temporale' : '6. Finestra temporale'}
         </span>
         <div className="clean-segmented" role="radiogroup" aria-label="Finestra temporale">
           {WINDOW_OPTIONS.map((w) => (
@@ -409,6 +532,15 @@ export const SearchForm: React.FC<SearchFormProps> = ({
             </button>
           ))}
         </div>
+
+        {timeWindow === 'days14' && (
+          <div className="clean-window-alert" role="alert">
+            <AlertCircle size={15} />
+            <span>
+              Attenzione: quote ed eventi oltre i 7 giorni possono subire forti variazioni di mercato e rotazioni di formazione prima del calcio d&apos;inizio.
+            </span>
+          </div>
+        )}
       </div>
 
       <button

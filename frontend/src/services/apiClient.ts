@@ -3,6 +3,8 @@ import {
   BettingSlipResult,
   CandidateSelection,
   CompetitionCoverageInfo,
+  CompetitionItem,
+  DiversityModeKey,
   EventAIContextPayload,
   FeasibilityCheckResult,
   MarketGroupKey,
@@ -36,12 +38,25 @@ export interface BackendStatusResponse {
     oddsApiRemainingCredits: number | null;
     oddsApiUsedCredits: number | null;
     cacheEntriesCount: number;
+    grounding?: {
+      enabled: boolean;
+      used: number;
+      budget: number;
+      remaining: number;
+      exhausted: boolean;
+    };
+    aiTelemetry?: {
+      activeModel: string;
+      avgLatencyMs: number;
+      samples: number;
+    };
   };
   serverTime: string;
 }
 
 export interface AnalyzeApiResponse {
   generatedAt: string;
+  calendarUpdatedTimestamp?: string;
   betType: BetTypeKey;
   feasibility: FeasibilityCheckResult;
   multiSportPrompt: MultiSportPromptInfo | null;
@@ -74,6 +89,26 @@ export async function fetchBackendStatus(): Promise<BackendStatusResponse | null
   }
 }
 
+export async function fetchCompetitions(timeWindow: TimeWindowKey = 'hours48'): Promise<{
+  competitions: CompetitionItem[];
+  calendarUpdatedTimestamp: string;
+  timeWindow: TimeWindowKey;
+}> {
+  try {
+    const res = await fetch(`./api/competitions?timeWindow=${encodeURIComponent(timeWindow)}`);
+    if (res.ok) {
+      return await res.json();
+    }
+  } catch {
+    // fallback se backend non risponde
+  }
+  return {
+    competitions: [],
+    calendarUpdatedTimestamp: new Date().toLocaleDateString('it-IT'),
+    timeWindow
+  };
+}
+
 export async function runBackendAnalysis(params: {
   betType: BetTypeKey;
   sports: SportKey[];
@@ -81,7 +116,11 @@ export async function runBackendAnalysis(params: {
   targetOdds: number;
   riskLevel: number;
   timeWindow: TimeWindowKey;
+  competitions?: string[];
+  diversityMode?: DiversityModeKey;
+  maxSameMarketSelection?: number;
   allowedMarketGroups?: MarketGroupKey[];
+  snaiRealOddsOverrides?: Record<string, number>;
 }): Promise<AnalyzeApiResponse> {
   try {
     const res = await fetch('./api/analyze', {
@@ -105,4 +144,3 @@ export async function runBackendAnalysis(params: {
     return runStaticPagesAnalysis(params);
   }
 }
-

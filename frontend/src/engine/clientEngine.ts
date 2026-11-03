@@ -16,10 +16,10 @@ export function computeClientFinalProbability(
   if (pAi === undefined || pAi === null || Number.isNaN(pAi)) {
     return { pFinal: Number(pMarket.toFixed(4)), estimationMode: 'market_only' };
   }
-  const minAllowed = Math.max(0.01, pMarket - 0.10);
-  const maxAllowed = Math.min(0.99, pMarket + 0.10);
+  const minAllowed = Math.max(0.01, pMarket - 0.1);
+  const maxAllowed = Math.min(0.99, pMarket + 0.1);
   const clampedPAi = Math.max(minAllowed, Math.min(maxAllowed, pAi));
-  const w = (aiConfidence ?? 0.5) < 0.5 ? 0.90 : 0.70;
+  const w = (aiConfidence ?? 0.5) < 0.5 ? 0.9 : 0.7;
   const pFinal = w * pMarket + (1 - w) * clampedPAi;
   return {
     pFinal: Number(pFinal.toFixed(4)),
@@ -94,6 +94,20 @@ export function buildClientSlipObject(
   const maxTarget = targetOdds * (1 + tolerance);
   const withinTolerance = totalOdds >= minTarget - 1e-6 && totalOdds <= maxTarget + 1e-6;
 
+  // Controllo varietà dello stesso mercato/modello
+  const counts = new Map<string, number>();
+  let maxFound = 1;
+  for (const s of selections) {
+    const k = `${s.market.toLowerCase().trim()}::${s.selection.toLowerCase().replace(/\s*\([^)]*\)/g, '').trim()}`;
+    const c = (counts.get(k) || 0) + 1;
+    counts.set(k, c);
+    if (c > maxFound) maxFound = c;
+  }
+  const sameModelWarning =
+    maxFound >= 3
+      ? 'Le stime condividono lo stesso modello o mercato, la probabilità reale può essere più bassa.'
+      : undefined;
+
   return {
     selections,
     totalOdds,
@@ -108,7 +122,8 @@ export function buildClientSlipObject(
       combinedEv < 0
         ? `Valore atteso (EV) negativo (${(combinedEv * 100).toFixed(1)}%): il margine matematico dei bookmaker riduce il rendimento teorico nel lungo periodo.`
         : null,
-    explanation
+    explanation,
+    sameModelWarning
   };
 }
 
@@ -247,11 +262,10 @@ export function recomputeRecommendationsAndSlip(
   const rule = RISK_CONFIG_UI[riskLevel] || RISK_CONFIG_UI[5];
   const alpha = riskLevel === 11 ? 0.65 : (Math.max(1, Math.min(10, riskLevel)) - 1) / 9;
 
-  const aiBetsOnly = allSelections.filter((s) => s.estimationMode === 'ai_plus_market');
   const eligible =
     betType === 'single'
-      ? aiBetsOnly.filter((s) => s.effectiveOdds >= MIN_SELECTION_ODDS - 1e-6)
-      : aiBetsOnly.filter(
+      ? allSelections.filter((s) => s.effectiveOdds >= MIN_SELECTION_ODDS - 1e-6)
+      : allSelections.filter(
           (s) =>
             s.snaiRealOdds !== undefined ||
             (s.pFinal >= rule.minProb - 1e-6 &&
@@ -275,7 +289,13 @@ export function recomputeRecommendationsAndSlip(
   const scored = eligible
     .map((c) => {
       const pNorm = rangeP > 1e-9 ? (c.pFinal - minP) / rangeP : 1;
-      const evNorm = rangeEv > 1e-9 ? (c.ev - minEv) / rangeEv : 1;
+      // Per quote stimate dal modello, l'EV è escluso dal punteggio finché l'utente non inserisce la quota reale SNAI
+      const evNorm =
+        c.sourceType === 'model' && c.snaiRealOdds === undefined
+          ? 0
+          : rangeEv > 1e-9
+          ? (c.ev - minEv) / rangeEv
+          : 1;
       const aiConfBonus = riskLevel === 11 ? 0.15 * (c.aiConfidence ?? 0.7) : 0;
       const score = Number(((1 - alpha) * pNorm + alpha * evNorm + aiConfBonus).toFixed(4));
       return { ...c, score };
@@ -341,8 +361,10 @@ export function recomputeRecommendationsAndSlip(
 
   const validSlips: BettingSlipResult[] = [];
   for (const n of candidateNs) {
-    const s = searchSlipFixedN(topPool, targetOdds, n, riskLevel, tolerance);
-    if (s) validSlips.push(s);
+    const slip = searchSlipFixedN(topPool, targetOdds, n, riskLevel, tolerance);
+    if (slip) {
+      validSlips.push(slip);
+    }
   }
 
   if (validSlips.length === 0) return { recommendedSingles, bestSlip: null };
@@ -350,17 +372,17 @@ export function recomputeRecommendationsAndSlip(
   const withinTol = validSlips.filter((s) => s.withinTolerance);
   if (withinTol.length > 0) {
     withinTol.sort((a, b) => {
-      const scA = (1 - alpha) * a.combinedProbability + alpha * a.combinedEv;
-      const scB = (1 - alpha) * b.combinedProbability + alpha * b.combinedEv;
-      return scB - scA;
+      const scoreA = (1 - alpha) * a.combinedProbability + alpha * a.combinedEv;
+      const scoreB = (1 - alpha) * b.combinedProbability + alpha * b.combinedEv;
+      return scoreB - scoreA;
     });
     return { recommendedSingles, bestSlip: withinTol[0] };
   }
 
   validSlips.sort((a, b) => {
-    const dA = Math.abs(Math.log(a.totalOdds) - Math.log(targetOdds));
-    const dB = Math.abs(Math.log(b.totalOdds) - Math.log(targetOdds));
-    return dA - dB;
+    const distA = Math.abs(Math.log(a.totalOdds) - Math.log(targetOdds));
+    const distB = Math.abs(Math.log(b.totalOdds) - Math.log(targetOdds));
+    return distA - distB || b.combinedProbability - a.combinedProbability;
   });
 
   return { recommendedSingles, bestSlip: validSlips[0] };

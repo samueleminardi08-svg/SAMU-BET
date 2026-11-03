@@ -7,7 +7,10 @@ import {
   ChevronUp,
   Download,
   Check,
-  Share2
+  Sparkles,
+  ShieldAlert,
+  Sliders,
+  CheckCircle2
 } from 'lucide-react';
 import { BettingSlipResult } from '../config/riskConfig';
 import { downloadSlipAsImage } from '../utils/slipImageGenerator';
@@ -60,6 +63,8 @@ export const SlipSummary: React.FC<SlipSummaryProps> = ({ slip, generatedAt }) =
     };
   });
 
+  const review = slip.slipReview;
+
   return (
     <section className="clean-slip-summary" aria-label="Riepilogo schedina">
       <div className="css-top-row">
@@ -106,7 +111,7 @@ export const SlipSummary: React.FC<SlipSummaryProps> = ({ slip, generatedAt }) =
         </div>
       </div>
 
-      {/* Avviso obbligatorio se P_comb < 5% (Sez. 8) */}
+      {/* Avviso obbligatorio se P_comb < 5% */}
       {slip.lowProbabilityWarning && (
         <div className="css-low-prob-banner" role="alert">
           <AlertTriangle size={16} aria-hidden="true" />
@@ -117,7 +122,26 @@ export const SlipSummary: React.FC<SlipSummaryProps> = ({ slip, generatedAt }) =
         </div>
       )}
 
-      {/* 3 KPI Principali Puliti */}
+      {/* Avviso stime che condividono lo stesso modello (Sezione 6.5) */}
+      {slip.sameModelWarning && (
+        <div className="same-model-alert" role="alert">
+          <ShieldAlert size={16} />
+          <span>{slip.sameModelWarning}</span>
+        </div>
+      )}
+
+      {/* Info varietà applicata */}
+      {slip.diversityApplied && (
+        <div className="diversity-applied-badge">
+          <Sliders size={14} />
+          <span>
+            Varietà mercati ({slip.diversityApplied.mode}): max{' '}
+            <strong>{slip.diversityApplied.limit}</strong> selezioni dello stesso mercato
+          </span>
+        </div>
+      )}
+
+      {/* 3 KPI Principali */}
       <div className="css-kpi-row">
         <div className="css-kpi-cell primary">
           <span className="css-kpi-label">Quota Totale</span>
@@ -146,6 +170,46 @@ export const SlipSummary: React.FC<SlipSummaryProps> = ({ slip, generatedAt }) =
         </div>
       </div>
 
+      {/* PARERE AI (STADIO B REVIEW) */}
+      {review && (
+        <div className="ai-review-card">
+          <div className="ai-review-header">
+            <div className="ai-review-title">
+              <Sparkles size={16} />
+              <span>Parere AI sulla Schedina</span>
+            </div>
+            <span className={`ai-review-verdict-badge ${review.verdict}`}>
+              Giudizio: {review.verdict}
+            </span>
+          </div>
+
+          <p className="ai-review-summary">
+            {review.summary}
+          </p>
+
+          {review.warnings && review.warnings.length > 0 && (
+            <div className="ai-review-warnings">
+              {review.warnings.map((w, idx) => (
+                <div key={idx} className="ai-review-warning-item">
+                  <AlertTriangle size={14} />
+                  <span>{w}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="ai-review-footer">
+            <span>
+              Confidenza complessiva AI:{' '}
+              <strong className="ai-review-confidence-val">
+                {Math.round(review.overallConfidence * 100)}%
+              </strong>
+            </span>
+            <span>Analisi qualitativa d&apos;insieme (senza alterazione probabilità)</span>
+          </div>
+        </div>
+      )}
+
       {/* Barra lineare di completamento quota */}
       <div className="css-progress-block">
         <div className="css-progress-labels">
@@ -169,7 +233,7 @@ export const SlipSummary: React.FC<SlipSummaryProps> = ({ slip, generatedAt }) =
         </div>
       )}
 
-      {/* Distribuzione probabilità espandibile (Progressive Disclosure) */}
+      {/* Distribuzione probabilità espandibile */}
       {slip.selections.length > 1 && (
         <>
           <button

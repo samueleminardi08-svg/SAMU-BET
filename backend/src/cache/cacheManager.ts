@@ -5,6 +5,7 @@ import path from 'node:path';
 export const TTL_ODDS_MS = 15 * 60 * 1000;      // 15 minuti
 export const TTL_RSS_MS = 2 * 60 * 60 * 1000;   // 2 ore
 export const TTL_STATS_MS = 6 * 60 * 60 * 1000; // 6 ore
+export const TTL_FIXTURES_MS = 60 * 60 * 1000;  // 1 ora
 
 interface CacheEntry<T> {
   value: T;
@@ -19,9 +20,15 @@ class CacheAndQuotaManager {
   private ipRequests = new Map<string, number[]>();
 
   private currentDayKey: string = this.getTodayKey();
+  private currentMonthKey: string = this.getMonthKey();
   private dailyExternalApiCalls = 0;
+  private monthlyGroundingCalls = 0;
   private oddsApiRemainingCredits: number | null = null;
   private oddsApiUsedCredits: number | null = null;
+
+  // AI telemetry
+  private aiLatencies: number[] = [];
+  private activeAiModel = 'gemini-3.8-flash';
 
   constructor() {
     this.loadFromDisk();
@@ -29,6 +36,10 @@ class CacheAndQuotaManager {
 
   private getTodayKey(): string {
     return new Date().toISOString().slice(0, 10);
+  }
+
+  private getMonthKey(): string {
+    return new Date().toISOString().slice(0, 7);
   }
 
   private loadFromDisk(): void {
@@ -39,9 +50,12 @@ class CacheAndQuotaManager {
       const parsed = JSON.parse(raw) as {
         entries?: Array<[string, CacheEntry<unknown>]>;
         dayKey?: string;
+        monthKey?: string;
         dailyExternalApiCalls?: number;
+        monthlyGroundingCalls?: number;
         oddsApiRemainingCredits?: number | null;
         oddsApiUsedCredits?: number | null;
+        activeAiModel?: string;
       };
       const now = Date.now();
       if (Array.isArray(parsed.entries)) {
@@ -55,6 +69,12 @@ class CacheAndQuotaManager {
         this.dailyExternalApiCalls = parsed.dailyExternalApiCalls || 0;
         this.oddsApiRemainingCredits = parsed.oddsApiRemainingCredits ?? null;
         this.oddsApiUsedCredits = parsed.oddsApiUsedCredits ?? null;
+      }
+      if (parsed.monthKey === this.currentMonthKey) {
+        this.monthlyGroundingCalls = parsed.monthlyGroundingCalls || 0;
+      }
+      if (parsed.activeAiModel) {
+        this.activeAiModel = parsed.activeAiModel;
       }
     } catch {
       // ignore corrupted cache file
@@ -73,9 +93,12 @@ class CacheAndQuotaManager {
       }
       const payload = {
         dayKey: this.currentDayKey,
+        monthKey: this.currentMonthKey,
         dailyExternalApiCalls: this.dailyExternalApiCalls,
+        monthlyGroundingCalls: this.monthlyGroundingCalls,
         oddsApiRemainingCredits: this.oddsApiRemainingCredits,
         oddsApiUsedCredits: this.oddsApiUsedCredits,
+        activeAiModel: this.activeAiModel,
         entries: validEntries
       };
       fs.writeFileSync(DISK_CACHE_FILE, JSON.stringify(payload), 'utf-8');
@@ -89,6 +112,11 @@ class CacheAndQuotaManager {
     if (today !== this.currentDayKey) {
       this.currentDayKey = today;
       this.dailyExternalApiCalls = 0;
+    }
+    const month = this.getMonthKey();
+    if (month !== this.currentMonthKey) {
+      this.currentMonthKey = month;
+      this.monthlyGroundingCalls = 0;
     }
   }
 
@@ -137,11 +165,14 @@ class CacheAndQuotaManager {
 
   public canMakeExternalApiCall(): boolean {
     this.ensureDayReset();
-    const dailyLimit = Number(process.env.DAILY_API_QUOTA_LIMIT) || 45;
-    if (this.dailyExternalApiCalls >= dailyLimit) {
+    const dailyLimit = Number(process.env.DAILY_API_QUOTA_LIMIT) || 1000;
+    if (this.oddsApiRemainingCredits !== null && this.oddsApiRemainingCredits <= 0) {
       return false;
     }
-    if (this.oddsApiRemainingCredits !== null && this.oddsApiRemainingCredits <= 0) {
+    if (this.dailyExternalApiCalls >= dailyLimit) {
+      if (process.env.NODE_ENV !== 'production' && this.oddsApiRemainingCredits !== null && this.oddsApiRemainingCredits > 0) {
+        return true;
+      }
       return false;
     }
     return true;
@@ -163,6 +194,57 @@ class CacheAndQuotaManager {
     this.saveToDisk();
   }
 
+  // --- Grounding Budget Tracking ---
+  public canMakeGroundingCall(): boolean {
+    this.ensureDayReset();
+    const enabled = process.env.GROUNDING_ENABLED === 'true';
+    if (!enabled) return false;
+    const budget = Number(process.env.GROUNDING_MONTHLY_BUDGET) || 4000;
+    return this.monthlyGroundingCalls < budget;
+  }
+
+  public recordGroundingCall(count = 1): void {
+    this.ensureDayReset();
+    this.monthlyGroundingCalls += count;
+    this.saveToDisk();
+  }
+
+  public getGroundingStatus() {
+    this.ensureDayReset();
+    const budget = Number(process.env.GROUNDING_MONTHLY_BUDGET) || 4000;
+    const enabled = process.env.GROUNDING_ENABLED === 'true';
+    return {
+      enabled,
+      month: this.currentMonthKey,
+      used: this.monthlyGroundingCalls,
+      budget,
+      remaining: Math.max(0, budget - this.monthlyGroundingCalls),
+      exhausted: this.monthlyGroundingCalls >= budget
+    };
+  }
+
+  // --- AI Telemetry ---
+  public recordAiLatency(ms: number, model?: string): void {
+    this.aiLatencies.push(ms);
+    if (this.aiLatencies.length > 50) this.aiLatencies.shift();
+    if (model) {
+      this.activeAiModel = model;
+      this.saveToDisk();
+    }
+  }
+
+  public getAiTelemetry() {
+    const avgLatency =
+      this.aiLatencies.length > 0
+        ? Math.round(this.aiLatencies.reduce((a, b) => a + b, 0) / this.aiLatencies.length)
+        : 0;
+    return {
+      activeModel: this.activeAiModel,
+      avgLatencyMs: avgLatency,
+      samples: this.aiLatencies.length
+    };
+  }
+
   public getQuotaStatus() {
     this.ensureDayReset();
     const dailyLimit = Number(process.env.DAILY_API_QUOTA_LIMIT) || 45;
@@ -173,11 +255,11 @@ class CacheAndQuotaManager {
       dailyQuotaExhausted: !this.canMakeExternalApiCall(),
       oddsApiRemainingCredits: this.oddsApiRemainingCredits,
       oddsApiUsedCredits: this.oddsApiUsedCredits,
-      cacheEntriesCount: this.cache.size
+      cacheEntriesCount: this.cache.size,
+      grounding: this.getGroundingStatus(),
+      aiTelemetry: this.getAiTelemetry()
     };
   }
 }
 
 export const sharedCache = new CacheAndQuotaManager();
-
-

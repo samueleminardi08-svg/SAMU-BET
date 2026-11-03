@@ -1078,11 +1078,21 @@ export function runStaticPagesAnalysis(params: {
   riskLevel: number;
   timeWindow: TimeWindowKey;
   allowedMarketGroups?: MarketGroupKey[];
+  competitions?: string[];
+  diversityMode?: string;
+  maxSameMarketSelection?: number;
+  snaiRealOddsOverrides?: Record<string, number>;
 }): AnalyzeApiResponse {
   const now = Date.now();
   const hourMs = 3600 * 1000;
   const maxHours =
-    params.timeWindow === 'today' ? 26 : params.timeWindow === 'hours48' ? 48 : 168;
+    params.timeWindow === 'today'
+      ? 26
+      : params.timeWindow === 'hours48'
+      ? 48
+      : params.timeWindow === 'days7'
+      ? 168
+      : 336;
 
   const feasibility = checkClientFeasibility(params.targetOdds, params.riskLevel, params.betType);
 

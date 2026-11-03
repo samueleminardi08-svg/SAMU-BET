@@ -1,4 +1,5 @@
 import { sharedCache, TTL_ODDS_MS } from '../cache/cacheManager.js';
+import { PRIORITY_FOOTBALL_KEYS } from '../config/competitionsCatalog.js';
 import {
   generateFootballSnaiMarkets,
   generateTennisSnaiMarkets
@@ -13,6 +14,7 @@ import {
   TimeWindowKey
 } from '../types/models.js';
 import { fetchF1CurrentSchedule, fetchF1DriverStandings } from './f1StatsProvider.js';
+import { defaultFixturesProvider } from './fixturesProvider.js';
 import { FOOTBALL_DATA_FREE_COMPETITIONS } from './footballStatsProvider.js';
 
 export interface OddsFetchResult {
@@ -27,7 +29,7 @@ export interface OddsFetchResult {
  */
 export interface OddsProvider {
   readonly name: string;
-  fetchEvents(sports: SportKey[], timeWindow: TimeWindowKey): Promise<OddsFetchResult>;
+  fetchEvents(sports: SportKey[], timeWindow: TimeWindowKey, competitions?: string[]): Promise<OddsFetchResult>;
 }
 
 export function getWindowEndTimestamp(timeWindow: TimeWindowKey, now = new Date()): Date {
@@ -43,57 +45,12 @@ export function getWindowEndTimestamp(timeWindow: TimeWindowKey, now = new Date(
   if (timeWindow === 'hours48') {
     return new Date(now.getTime() + 48 * 3600 * 1000);
   }
-  return new Date(now.getTime() + 7 * 24 * 3600 * 1000);
+  if (timeWindow === 'days7') {
+    return new Date(now.getTime() + 7 * 24 * 3600 * 1000);
+  }
+  // Finestra 14 giorni (Sezione 4)
+  return new Date(now.getTime() + 14 * 24 * 3600 * 1000);
 }
-
-/**
- * Priorità campionati di calcio per massimizzare il numero di partite rilevanti
- * restando nei limiti di 500 crediti/mese del piano gratuito di The Odds API.
- */
-const PRIORITY_FOOTBALL_KEYS = [
-  'soccer_italy_serie_a',
-  'soccer_italy_serie_b',
-  'soccer_italy_coppa_italia',
-  'soccer_uefa_champs_league',
-  'soccer_uefa_europa_league',
-  'soccer_uefa_europa_conference_league',
-  'soccer_uefa_nations_league',
-  'soccer_fifa_world_cup',
-  'soccer_fifa_world_cup_qualifiers_europe',
-  'soccer_fifa_world_cup_qualifiers_south_america',
-  'soccer_conmebol_copa_libertadores',
-  'soccer_conmebol_copa_sudamericana',
-  'soccer_epl',
-  'soccer_fa_cup',
-  'soccer_england_efl_cup',
-  'soccer_efl_champ',
-  'soccer_spain_la_liga',
-  'soccer_spain_segunda_division',
-  'soccer_spain_copa_del_rey',
-  'soccer_germany_bundesliga',
-  'soccer_germany_bundesliga2',
-  'soccer_germany_dfb_pokal',
-  'soccer_france_ligue_one',
-  'soccer_france_ligue_two',
-  'soccer_netherlands_eredivisie',
-  'soccer_portugal_primeira_liga',
-  'soccer_brazil_campeonato',
-  'soccer_argentina_primera_division',
-  'soccer_turkey_super_league',
-  'soccer_belgium_first_div',
-  'soccer_spl',
-  'soccer_switzerland_superleague',
-  'soccer_austria_bundesliga',
-  'soccer_greece_super_league',
-  'soccer_denmark_superliga',
-  'soccer_norway_eliteserien',
-  'soccer_sweden_allsvenskan',
-  'soccer_usa_mls',
-  'soccer_mexico_ligamx',
-  'soccer_japan_j_league',
-  'soccer_saudi_arabia_pro_league',
-  'soccer_australia_aleague'
-];
 
 interface OddsApiSportItem {
   key: string;
@@ -277,11 +234,27 @@ function parseOddsApiMarkets(
   }
 
   const baseMarkets = Array.from(marketsMap.values()).filter((m) => m.outcomes.length > 0);
+  baseMarkets.forEach((m) => {
+    m.isModelDerived = m.marketKey === 'double_chance' || m.marketKey === 'draw_no_bet';
+  });
+
   if (sport === 'football') {
-    return generateFootballSnaiMarkets(ev.home_team, ev.away_team, baseMarkets);
+    const generated = generateFootballSnaiMarkets(ev.home_team, ev.away_team, baseMarkets);
+    generated.forEach((m) => {
+      if (m.isModelDerived === undefined) {
+        m.isModelDerived = m.marketKey !== 'h2h' && !m.marketKey.startsWith('totals') && !m.marketKey.startsWith('spreads');
+      }
+    });
+    return generated;
   }
   if (sport === 'tennis') {
-    return generateTennisSnaiMarkets(ev.home_team, ev.away_team, baseMarkets);
+    const generated = generateTennisSnaiMarkets(ev.home_team, ev.away_team, baseMarkets);
+    generated.forEach((m) => {
+      if (m.isModelDerived === undefined) {
+        m.isModelDerived = m.marketKey !== 'h2h' && !m.marketKey.startsWith('totals') && !m.marketKey.startsWith('spreads');
+      }
+    });
+    return generated;
   }
   return baseMarkets;
 }
@@ -358,7 +331,7 @@ export class TheOddsApiProvider implements OddsProvider {
     }
   }
 
-  public async fetchEvents(sports: SportKey[], timeWindow: TimeWindowKey): Promise<OddsFetchResult> {
+  public async fetchEvents(sports: SportKey[], timeWindow: TimeWindowKey, competitions?: string[]): Promise<OddsFetchResult> {
     const apiKey = process.env.THE_ODDS_API_KEY?.trim() || '';
     const regions = process.env.THE_ODDS_API_REGIONS?.trim() || 'eu';
     const now = new Date();
@@ -376,8 +349,22 @@ export class TheOddsApiProvider implements OddsProvider {
         (s) => s.active && s.key.startsWith('soccer_') && !s.has_outrights
       );
 
-      // Ordina per priorità in modo da interrogare i campionati principali per primi
-      activeSoccer.sort((a, b) => {
+      // Prima identifichiamo quali competizioni hanno partite reali programmate nella finestra (0 crediti)
+      let activeFixturesComps: Set<string> | null = null;
+      try {
+        const fixtures = await defaultFixturesProvider.getFixtures({ from: now, to: endWindow });
+        if (fixtures && fixtures.length > 0) {
+          activeFixturesComps = new Set(fixtures.map((f) => f.competitionId));
+        }
+      } catch {
+        // Fallback se il provider calendario ha un errore momentaneo
+      }
+
+      // Ordina per priorità, privilegiando le competizioni che hanno effettivamente match in programma nella finestra
+      const sortedByScheduleAndPriority = [...activeSoccer].sort((a, b) => {
+        const hasA = activeFixturesComps ? (activeFixturesComps.has(a.key) ? 0 : 1) : 0;
+        const hasB = activeFixturesComps ? (activeFixturesComps.has(b.key) ? 0 : 1) : 0;
+        if (hasA !== hasB) return hasA - hasB;
         const idxA = PRIORITY_FOOTBALL_KEYS.indexOf(a.key);
         const idxB = PRIORITY_FOOTBALL_KEYS.indexOf(b.key);
         const scoreA = idxA === -1 ? 999 : idxA;
@@ -386,7 +373,13 @@ export class TheOddsApiProvider implements OddsProvider {
       });
 
       // Interroghiamo in parallelo fino a 15 campionati e coppe del mondo attive (con cache 15m)
-      const selectedSoccer = activeSoccer.slice(0, 15);
+      if (timeWindow === 'days14') {
+        providerWarnings.push('Finestra 14 giorni attiva: per eventi oltre 7 giorni le quote dei bookmaker potrebbero essere limitate o incomplete.');
+      }
+      const filteredByComp = competitions && competitions.length > 0
+        ? sortedByScheduleAndPriority.filter((s) => competitions.includes(s.key))
+        : sortedByScheduleAndPriority;
+      const selectedSoccer = filteredByComp.slice(0, 15);
 
       if (!apiKey) {
         providerWarnings.push(
@@ -539,6 +532,20 @@ export class TheOddsApiProvider implements OddsProvider {
       });
     }
 
+    if (events.length === 0 && process.env.NODE_ENV !== 'production') {
+      const demo = new DemoOddsProvider();
+      const demoRes = await demo.fetchEvents(sports, timeWindow, competitions);
+      return {
+        events: demoRes.events,
+        providerWarnings: [
+          ...providerWarnings,
+          'Nessuna partita live disponibile nell\'orario selezionato dal feed API: utilizzati dati dimostrativi di backup.'
+        ],
+        coveredCompetitions: demoRes.coveredCompetitions,
+        isDemoData: true
+      };
+    }
+
     return {
       events,
       providerWarnings,
@@ -555,7 +562,7 @@ export class TheOddsApiProvider implements OddsProvider {
 export class DemoOddsProvider implements OddsProvider {
   public readonly name = 'DemoOddsProvider (SOLO SVILUPPO - DATI DI PROVA)';
 
-  public async fetchEvents(sports: SportKey[], timeWindow: TimeWindowKey): Promise<OddsFetchResult> {
+  public async fetchEvents(sports: SportKey[], timeWindow: TimeWindowKey, competitions?: string[]): Promise<OddsFetchResult> {
     if (process.env.NODE_ENV === 'production') {
       throw new Error('DemoOddsProvider è vietato in produzione.');
     }
@@ -947,9 +954,13 @@ export class DemoOddsProvider implements OddsProvider {
       }
     ];
 
-    const filtered = allDemoEvents.filter(
-      (ev) => sports.includes(ev.sport) && new Date(ev.commenceTime).getTime() <= endWindow
-    );
+    const filtered = allDemoEvents.filter((ev) => {
+      if (!sports.includes(ev.sport)) return false;
+      if (competitions && competitions.length > 0 && ev.sport === 'football' && !competitions.includes(ev.competitionId)) {
+        return false;
+      }
+      return new Date(ev.commenceTime).getTime() <= endWindow;
+    });
 
     const allDemoCovered: CompetitionCoverageInfo[] = [
       {
